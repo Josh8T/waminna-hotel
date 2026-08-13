@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BedDouble } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Register() {

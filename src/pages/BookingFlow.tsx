@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, Plus, Check, Coffee, Car, Sparkles, Clock } from 'lucide-react';
+import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import { getRoomById, createBooking, HOTEL_ADDONS } from '@/lib/data';
 import Header from '@/components/Header';
 
@@ -13,7 +13,7 @@ export default function BookingFlow() {
   const guests = searchParams.get('guests') || '2';
 
   const [step, setStep] = useState(1);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedAddons] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -33,12 +33,6 @@ export default function BookingFlow() {
     const s = new Date(checkIn), e = new Date(checkOut);
     return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
   })();
-
-  const toggleAddon = (id: string) => {
-    setSelectedAddons((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
 
   const addonTotal = selectedAddons.reduce((acc, id) => {
     const addon = HOTEL_ADDONS.find((a) => a.id === id);

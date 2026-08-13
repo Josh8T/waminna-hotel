@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { BedDouble } from 'lucide-react';
 
 export default function Footer() {
   return (

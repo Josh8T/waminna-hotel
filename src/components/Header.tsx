@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, BedDouble } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Header() {
