@@ -30,7 +30,7 @@ export default function AdminUsers() {
 
   const roleBadge = (role: string) => {
     const map: Record<string, string> = {
-      owner: 'bg-teal-light text-teal border-teal',
+      owner: 'bg-brand-light text-brand border-brand',
       staff: 'bg-blue-50 text-blue-700 border-blue-200',
       user: 'bg-green-50 text-green-700 border-green-200',
       guest: 'bg-warm-tertiary text-[#8a8984] border-warm-border',
@@ -54,7 +54,7 @@ export default function AdminUsers() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+            className="w-full pl-9 pr-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
           />
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function AdminUsers() {
                       <select
                         value={u.role}
                         onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                        className="px-2 py-1 border border-warm-border rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                        className="px-2 py-1 border border-warm-border rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                       >
                         <option value="guest">Guest</option>
                         <option value="user">User</option>

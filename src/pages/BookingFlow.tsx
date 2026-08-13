@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
-import { getRoomById, createBooking } from '@/lib/data';
+import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, Plus, Check, Coffee, Car, Sparkles, Clock } from 'lucide-react';
+import { getRoomById, createBooking, HOTEL_ADDONS } from '@/lib/data';
 import Header from '@/components/Header';
 
 export default function BookingFlow() {
@@ -13,6 +13,7 @@ export default function BookingFlow() {
   const guests = searchParams.get('guests') || '2';
 
   const [step, setStep] = useState(1);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -32,15 +33,28 @@ export default function BookingFlow() {
     const s = new Date(checkIn), e = new Date(checkOut);
     return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
   })();
+
+  const toggleAddon = (id: string) => {
+    setSelectedAddons((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const addonTotal = selectedAddons.reduce((acc, id) => {
+    const addon = HOTEL_ADDONS.find((a) => a.id === id);
+    if (!addon) return acc;
+    return acc + (addon.perNight ? addon.price * Math.max(1, nights) : addon.price);
+  }, 0);
+
   const subtotal = room ? room.pricePerNight * nights : 0;
-  const tax = subtotal * 0.1;
-  const total = subtotal + tax;
+  const tax = (subtotal + addonTotal) * 0.1;
+  const total = subtotal + addonTotal + tax;
 
   if (!room || !checkIn || !checkOut) {
     return (
       <div className="min-h-screen bg-warm-bg pt-24 text-center">
         <p className="text-lg text-[#5c5a54]">Invalid booking parameters</p>
-        <button onClick={() => navigate('/rooms')} className="text-teal hover:underline mt-2">
+        <button onClick={() => navigate('/rooms')} className="text-brand hover:underline mt-2">
           Browse rooms
         </button>
       </div>
@@ -119,7 +133,7 @@ export default function BookingFlow() {
                       step >= s.num
                         ? step > s.num
                           ? 'bg-green-50 text-green-700 border border-green-300'
-                          : 'bg-teal-light text-teal border border-teal'
+                          : 'bg-brand-light text-brand border border-brand'
                         : 'bg-warm-tertiary text-[#8a8984] border border-warm-border'
                     }`}
                   >
@@ -133,7 +147,7 @@ export default function BookingFlow() {
                   </div>
                   <span
                     className={`text-[11px] font-medium ${
-                      step >= s.num ? (step > s.num ? 'text-green-700' : 'text-teal') : 'text-[#8a8984]'
+                      step >= s.num ? (step > s.num ? 'text-green-700' : 'text-brand') : 'text-[#8a8984]'
                     }`}
                   >
                     {s.label}
@@ -172,17 +186,17 @@ export default function BookingFlow() {
               </div>
               <div className="grid grid-cols-3 gap-4 text-center mb-6">
                 <div className="p-3 bg-warm-bg rounded-lg">
-                  <Calendar className="w-4 h-4 text-teal mx-auto mb-1" />
+                  <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
                   <p className="text-[11px] text-[#8a8984]">Check-in</p>
                   <p className="text-sm font-medium">{new Date(checkIn).toLocaleDateString()}</p>
                 </div>
                 <div className="p-3 bg-warm-bg rounded-lg">
-                  <Calendar className="w-4 h-4 text-teal mx-auto mb-1" />
+                  <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
                   <p className="text-[11px] text-[#8a8984]">Check-out</p>
                   <p className="text-sm font-medium">{new Date(checkOut).toLocaleDateString()}</p>
                 </div>
                 <div className="p-3 bg-warm-bg rounded-lg">
-                  <Users className="w-4 h-4 text-teal mx-auto mb-1" />
+                  <Users className="w-4 h-4 text-brand mx-auto mb-1" />
                   <p className="text-[11px] text-[#8a8984]">Guests</p>
                   <p className="text-sm font-medium">{guests}</p>
                 </div>
@@ -210,7 +224,7 @@ export default function BookingFlow() {
                       type="text"
                       value={formData.firstName}
                       onChange={(e) => updateField('firstName', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                         errors.firstName ? 'border-red-400' : 'border-warm-border'
                       }`}
                     />
@@ -224,7 +238,7 @@ export default function BookingFlow() {
                       type="text"
                       value={formData.lastName}
                       onChange={(e) => updateField('lastName', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                         errors.lastName ? 'border-red-400' : 'border-warm-border'
                       }`}
                     />
@@ -239,7 +253,7 @@ export default function BookingFlow() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => updateField('email', e.target.value)}
-                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                       errors.email ? 'border-red-400' : 'border-warm-border'
                     }`}
                   />
@@ -253,7 +267,7 @@ export default function BookingFlow() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => updateField('phone', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                   />
                 </div>
                 <div>
@@ -264,7 +278,7 @@ export default function BookingFlow() {
                     value={formData.specialRequests}
                     onChange={(e) => updateField('specialRequests', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal resize-none"
+                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand resize-none"
                   />
                 </div>
               </div>
@@ -272,7 +286,7 @@ export default function BookingFlow() {
               {/* Mock Payment */}
               <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
-                  <CreditCard className="w-4 h-4 text-teal" />
+                  <CreditCard className="w-4 h-4 text-brand" />
                   <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">
                     Payment Information
                   </h2>
@@ -286,7 +300,7 @@ export default function BookingFlow() {
                     placeholder="XXXX XXXX XXXX XXXX"
                     value={formData.cardNumber}
                     onChange={(e) => updateField('cardNumber', e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19))}
-                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                       errors.cardNumber ? 'border-red-400' : 'border-warm-border'
                     }`}
                   />
@@ -302,7 +316,7 @@ export default function BookingFlow() {
                       placeholder="MM/YY"
                       value={formData.expiry}
                       onChange={(e) => updateField('expiry', e.target.value.slice(0, 5))}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                         errors.expiry ? 'border-red-400' : 'border-warm-border'
                       }`}
                     />
@@ -317,7 +331,7 @@ export default function BookingFlow() {
                       placeholder="XXX"
                       value={formData.cvc}
                       onChange={(e) => updateField('cvc', e.target.value.replace(/\D/g, '').slice(0, 3))}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal ${
+                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
                         errors.cvc ? 'border-red-400' : 'border-warm-border'
                       }`}
                     />
@@ -356,7 +370,7 @@ export default function BookingFlow() {
             <button
               onClick={handleContinue}
               disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors disabled:opacity-50"
             >
               {isSubmitting ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -400,7 +414,7 @@ export default function BookingFlow() {
             </div>
             <div className="mt-4 pt-3 border-t border-warm-border">
               <div className="flex items-start gap-2">
-                <Shield className="w-4 h-4 text-teal mt-0.5 flex-shrink-0" />
+                <Shield className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-[#1a1917]">Cancellation Policy</p>
                   <p className="text-[11px] text-[#8a8984]">Free cancellation up to 3 days before check-in</p>

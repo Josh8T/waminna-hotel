@@ -43,10 +43,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        teal: {
-          DEFAULT: '#0d7377',
-          light: '#e6f4f1',
-          dark: '#095c60',
+        brand: {
+          DEFAULT: '#586146',
+          light: '#e8ece1',
+          dark: '#3e4531',
+        },
+        accent: {
+          DEFAULT: '#cba46b',
+          foreground: '#ffffff',
         },
         warm: {
           bg: '#faf9f7',

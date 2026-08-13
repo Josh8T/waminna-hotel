@@ -48,8 +48,7 @@ export default function Header() {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <BedDouble className="w-6 h-6 text-teal" />
-          <span className="text-xl font-semibold text-[#1a1917]">Charles&apos;s Stay</span>
+          <img src={`${import.meta.env.BASE_URL}images/logo/waminna_logo.png`} alt="Waminna Hotel Logo" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop nav */}
@@ -58,11 +57,31 @@ export default function Header() {
             to="/rooms"
             className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               location.pathname === '/rooms'
-                ? 'text-teal bg-teal-light'
+                ? 'text-brand bg-brand-light'
                 : 'text-[#5c5a54] hover:text-[#1a1917] hover:bg-warm-secondary'
             }`}
           >
             Rooms
+          </Link>
+          <Link
+            to="/contact"
+            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              location.pathname === '/contact'
+                ? 'text-brand bg-brand-light'
+                : 'text-[#5c5a54] hover:text-[#1a1917] hover:bg-warm-secondary'
+            }`}
+          >
+            Contact
+          </Link>
+          <Link
+            to="/faq"
+            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              location.pathname === '/faq'
+                ? 'text-brand bg-brand-light'
+                : 'text-[#5c5a54] hover:text-[#1a1917] hover:bg-warm-secondary'
+            }`}
+          >
+            FAQ
           </Link>
           {user ? (
             <>
@@ -70,7 +89,7 @@ export default function Header() {
                 to="/my-bookings"
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   location.pathname === '/my-bookings'
-                    ? 'text-teal bg-teal-light'
+                    ? 'text-brand bg-brand-light'
                     : 'text-[#5c5a54] hover:text-[#1a1917] hover:bg-warm-secondary'
                 }`}
               >
@@ -81,7 +100,7 @@ export default function Header() {
                   to="/admin"
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                     location.pathname.startsWith('/admin')
-                      ? 'text-teal bg-teal-light'
+                      ? 'text-brand bg-brand-light'
                       : 'text-[#5c5a54] hover:text-[#1a1917] hover:bg-warm-secondary'
                   }`}
                 >
@@ -118,7 +137,7 @@ export default function Header() {
           )}
           <button
             onClick={scrollToSearch}
-            className="px-4 py-2 text-sm font-medium bg-teal text-white rounded-md hover:bg-teal-dark transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-md hover:bg-brand-dark transition-colors"
           >
             Book Now
           </button>
@@ -144,6 +163,12 @@ export default function Header() {
               <Link to="/rooms" className="px-3 py-2.5 text-sm font-medium text-[#1a1917] hover:bg-warm-secondary rounded-md">
                 Rooms
               </Link>
+              <Link to="/contact" className="px-3 py-2.5 text-sm font-medium text-[#1a1917] hover:bg-warm-secondary rounded-md">
+                Contact
+              </Link>
+              <Link to="/faq" className="px-3 py-2.5 text-sm font-medium text-[#1a1917] hover:bg-warm-secondary rounded-md">
+                FAQ
+              </Link>
               {user && (
                 <Link to="/my-bookings" className="px-3 py-2.5 text-sm font-medium text-[#1a1917] hover:bg-warm-secondary rounded-md">
                   My Bookings
@@ -164,7 +189,7 @@ export default function Header() {
                   <Link to="/login" className="px-3 py-2.5 text-sm font-medium text-[#1a1917] hover:bg-warm-secondary rounded-md">
                     Sign In
                   </Link>
-                  <Link to="/register" className="px-3 py-2.5 text-sm font-medium text-teal hover:bg-teal-light rounded-md">
+                  <Link to="/register" className="px-3 py-2.5 text-sm font-medium text-brand hover:bg-brand-light rounded-md">
                     Create Account
                   </Link>
                 </>

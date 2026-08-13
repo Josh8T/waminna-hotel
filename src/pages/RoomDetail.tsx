@@ -51,7 +51,7 @@ export default function RoomDetail() {
         <Header />
         <div className="pt-24 text-center">
           <p className="text-lg text-[#5c5a54]">Room not found</p>
-          <Link to="/rooms" className="text-teal hover:underline mt-2 inline-block">
+          <Link to="/rooms" className="text-brand hover:underline mt-2 inline-block">
             Back to rooms
           </Link>
         </div>
@@ -71,7 +71,7 @@ export default function RoomDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <Link
             to="/rooms"
-            className="inline-flex items-center gap-1.5 text-sm text-teal hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-brand hover:underline"
           >
             <ChevronLeft className="w-4 h-4" /> Back to all rooms
           </Link>
@@ -118,7 +118,7 @@ export default function RoomDetail() {
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-semibold text-[#1a1917] mb-3">{room.name}</h1>
           <div className="flex flex-wrap gap-2 mb-6">
-            <span className="px-2.5 py-1 bg-teal-light text-teal text-xs font-medium rounded-full capitalize">
+            <span className="px-2.5 py-1 bg-brand-light text-brand text-xs font-medium rounded-full capitalize">
               {room.type}
             </span>
             <span className="px-2.5 py-1 bg-warm-secondary text-[#5c5a54] text-xs font-medium rounded-full">
@@ -148,7 +148,7 @@ export default function RoomDetail() {
                 { icon: Eye, label: 'View', value: room.view || 'N/A' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 text-teal" />
+                  <Icon className="w-4 h-4 text-brand" />
                   <div>
                     <p className="text-[11px] text-[#8a8984]">{label}</p>
                     <p className="text-sm text-[#1a1917]">{value}</p>
@@ -191,7 +191,7 @@ export default function RoomDetail() {
                   value={checkIn}
                   onChange={(e) => setCheckIn(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
               </div>
               <div>
@@ -203,7 +203,7 @@ export default function RoomDetail() {
                   value={checkOut}
                   onChange={(e) => setCheckOut(e.target.value)}
                   min={checkIn || new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
               </div>
               <div>
@@ -213,7 +213,7 @@ export default function RoomDetail() {
                 <select
                   value={guests}
                   onChange={(e) => setGuests(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal bg-white"
+                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand bg-white"
                 >
                   {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
@@ -247,7 +247,7 @@ export default function RoomDetail() {
               to={`/booking${queryStr}`}
               className={`block w-full py-3 text-center rounded-md text-sm font-medium transition-colors ${
                 checkIn && checkOut && isAvailable
-                  ? 'bg-teal text-white hover:bg-teal-dark'
+                  ? 'bg-brand text-white hover:bg-brand-dark'
                   : 'bg-warm-tertiary text-[#8a8984] cursor-not-allowed pointer-events-none'
               }`}
             >

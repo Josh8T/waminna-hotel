@@ -138,7 +138,7 @@ export default function RoomListing() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-[#1a1917]">Filters</h3>
               {hasActiveFilters && (
-                <button onClick={clearFilters} className="text-xs text-teal hover:underline">
+                <button onClick={clearFilters} className="text-xs text-brand hover:underline">
                   Reset
                 </button>
               )}
@@ -155,7 +155,7 @@ export default function RoomListing() {
                     type="checkbox"
                     checked={selectedTypes.includes(type)}
                     onChange={() => toggleType(type)}
-                    className="w-4 h-4 rounded border-warm-border text-teal focus:ring-teal"
+                    className="w-4 h-4 rounded border-warm-border text-brand focus:ring-brand"
                   />
                   <span className="text-sm text-[#5c5a54] capitalize">{type}</span>
                 </label>
@@ -173,7 +173,7 @@ export default function RoomListing() {
                     type="checkbox"
                     checked={selectedBeds.includes(bed)}
                     onChange={() => toggleBed(bed)}
-                    className="w-4 h-4 rounded border-warm-border text-teal focus:ring-teal"
+                    className="w-4 h-4 rounded border-warm-border text-brand focus:ring-brand"
                   />
                   <span className="text-sm text-[#5c5a54] capitalize">{bed}</span>
                 </label>
@@ -191,7 +191,7 @@ export default function RoomListing() {
                   placeholder="Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
                 <span className="text-[#8a8984]">-</span>
                 <input
@@ -199,7 +199,7 @@ export default function RoomListing() {
                   placeholder="Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function RoomListing() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-1.5 border border-warm-border rounded-md text-sm text-[#5c5a54] bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+              className="px-3 py-1.5 border border-warm-border rounded-md text-sm text-[#5c5a54] bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
             >
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
@@ -227,7 +227,7 @@ export default function RoomListing() {
               <p className="text-sm text-[#8a8984] mb-4">Try adjusting your filters or dates</p>
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+                className="px-4 py-2 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
               >
                 Clear Filters
               </button>
@@ -250,7 +250,7 @@ export default function RoomListing() {
                     <div>
                       <h3 className="text-base font-semibold text-[#1a1917] mb-1">{room.name}</h3>
                       <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className="px-2 py-0.5 bg-teal-light text-teal text-[11px] font-medium rounded-full capitalize">
+                        <span className="px-2 py-0.5 bg-brand-light text-brand text-[11px] font-medium rounded-full capitalize">
                           {room.type}
                         </span>
                         <span className="px-2 py-0.5 bg-warm-secondary text-[#5c5a54] text-[11px] font-medium rounded-full">
@@ -266,7 +266,7 @@ export default function RoomListing() {
                       </span>
                       <Link
                         to={`/rooms/${room.id}${checkIn ? `?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}` : ''}`}
-                        className="text-sm font-medium text-teal hover:underline"
+                        className="text-sm font-medium text-brand hover:underline"
                       >
                         View details
                       </Link>

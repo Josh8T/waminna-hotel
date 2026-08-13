@@ -22,6 +22,25 @@ export interface Room {
   view?: string;
 }
 
+export interface Addon {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  perNight?: boolean;
+  category: 'dining' | 'transport' | 'wellness' | 'convenience';
+  icon: string;
+}
+
+export interface Review {
+  id: string;
+  roomId: number;
+  userName: string;
+  rating: number;
+  date: string;
+  comment: string;
+}
+
 export interface Booking {
   id: number;
   bookingReference: string;
@@ -32,6 +51,8 @@ export interface Booking {
   guestEmail: string;
   guestPhone: string | null;
   specialRequests: string | null;
+  selectedAddonIds?: string[];
+  addonTotal?: number;
   checkIn: string;
   checkOut: string;
   guestsCount: number;
@@ -63,7 +84,47 @@ export interface User {
   createdAt: string;
 }
 
-// ====== CONSTANTS ======
+// ====== CONSTANTS & ADDONS ======
+
+export const HOTEL_ADDONS: Addon[] = [
+  {
+    id: 'airport-shuttle',
+    name: 'Luxury Airport Transfer',
+    description: 'Private chauffered pickup & dropoff from/to International Airport',
+    price: 45,
+    perNight: false,
+    category: 'transport',
+    icon: 'Car',
+  },
+  {
+    id: 'daily-breakfast',
+    name: 'Gourmet Buffet Breakfast',
+    description: 'Daily international breakfast buffet for all guests in your room',
+    price: 25,
+    perNight: true,
+    category: 'dining',
+    icon: 'Coffee',
+  },
+  {
+    id: 'spa-package',
+    name: '60-Min Wellness Spa Voucher',
+    description: 'Relaxing full-body aromatherapy massage at Waminna Spa',
+    price: 60,
+    perNight: false,
+    category: 'wellness',
+    icon: 'Sparkles',
+  },
+  {
+    id: 'late-checkout',
+    name: 'Guaranteed Late Check-out',
+    description: 'Extend stay until 4:00 PM on check-out day',
+    price: 30,
+    perNight: false,
+    category: 'convenience',
+    icon: 'Clock',
+  },
+];
+
 
 export const AMENITIES = [
   'Air Conditioning',
@@ -109,7 +170,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 89,
     description: 'A cozy retreat overlooking our lush garden. The Garden Standard room offers everything you need for a comfortable stay, with warm natural light, soft linens, and a peaceful ambiance that makes you feel right at home.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Hair Dryer', 'Desk', 'Garden View'],
-    photos: [`${import.meta.env.BASE_URL}images/room-standard.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/standard/standard.png`, `${import.meta.env.BASE_URL}images/rooms/standard/standard_2.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '24 m²',
     view: 'Garden',
@@ -124,7 +185,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 95,
     description: 'Enjoy urban charm with city views in our City Standard room. Modern furnishings meet warm tones to create a space that is both functional and inviting, perfect for solo travelers or couples exploring the city.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Hair Dryer', 'City View'],
-    photos: [`${import.meta.env.BASE_URL}images/room-standard.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/standard_2bed/standard_2bed.png`, `${import.meta.env.BASE_URL}images/rooms/standard/standard_2.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '26 m²',
     view: 'City',
@@ -139,7 +200,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 129,
     description: 'Step up to the Garden Deluxe for an elevated experience. Featuring a plush king bed, premium linens, and a private balcony with garden views, this room blends comfort with a touch of luxury for a truly memorable stay.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'Garden View'],
-    photos: [`${import.meta.env.BASE_URL}images/room-deluxe.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe.png`, `${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe_2.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '32 m²',
     view: 'Garden',
@@ -154,7 +215,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 139,
     description: 'Overlooking our serene pool, the Pool Deluxe room offers a tranquil escape. With extra space, a king bed, and thoughtful amenities including a coffee machine and balcony, it is ideal for those seeking relaxation with a view.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'Pool View'],
-    photos: [`${import.meta.env.BASE_URL}images/room-deluxe.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe_2.png`, `${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '35 m²',
     view: 'Pool',
@@ -169,7 +230,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 199,
     description: 'The Garden Suite is our signature accommodation, featuring a separate living area, king bedroom, and panoramic garden views. Perfect for families or extended stays, with all the comforts of home and the luxury of a boutique hotel.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'Garden View', 'Bathtub', 'Iron & Board'],
-    photos: [`${import.meta.env.BASE_URL}images/room-suite.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/suite/suite.jpg`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '52 m²',
     view: 'Garden',
@@ -184,7 +245,7 @@ const DEFAULT_ROOMS: Room[] = [
     pricePerNight: 249,
     description: 'Our crown jewel. The Penthouse Suite offers unmatched luxury with a spacious living area, premium king bedroom, and breathtaking panoramic views. Every detail has been carefully curated for the most discerning guests.',
     amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'City View', 'Rain Shower', 'Iron & Board', 'Desk'],
-    photos: [`${import.meta.env.BASE_URL}images/room-suite.jpg`, `${import.meta.env.BASE_URL}images/room-view.jpg`, `${import.meta.env.BASE_URL}images/room-bathroom.jpg`, `${import.meta.env.BASE_URL}images/hotel-dining.jpg`],
+    photos: [`${import.meta.env.BASE_URL}images/rooms/suite2/suite2_2.png`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '68 m²',
     view: 'Panoramic',
@@ -199,7 +260,7 @@ const STORAGE_KEYS = {
   blockedDates: 'cs_blockedDates',
   users: 'cs_users',
   currentUser: 'cs_currentUser',
-  initialized: 'cs_initialized_v2',
+  initialized: 'cs_initialized_v3',
 };
 
 function getItem<T>(key: string, fallback: T): T {

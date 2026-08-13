@@ -85,7 +85,7 @@ export default function AdminRooms() {
         <h1 className="text-xl font-semibold text-[#1a1917]">Rooms</h1>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Room
         </button>
@@ -118,7 +118,7 @@ export default function AdminRooms() {
                 </div>
               </div>
               <div className="flex gap-2 mb-2">
-                <span className="px-2 py-0.5 bg-teal-light text-teal text-[11px] font-medium rounded-full capitalize">
+                <span className="px-2 py-0.5 bg-brand-light text-brand text-[11px] font-medium rounded-full capitalize">
                   {room.type}
                 </span>
                 <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize border ${
@@ -159,7 +159,7 @@ export default function AdminRooms() {
                       type="text"
                       value={form.name || ''}
                       onChange={(e) => updateField('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                   </div>
                   <div>
@@ -168,7 +168,7 @@ export default function AdminRooms() {
                       type="text"
                       value={form.roomNumber || ''}
                       onChange={(e) => updateField('roomNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function AdminRooms() {
                     <select
                       value={form.type}
                       onChange={(e) => updateField('type', e.target.value as RoomType)}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     >
                       <option value="standard">Standard</option>
                       <option value="deluxe">Deluxe</option>
@@ -193,7 +193,7 @@ export default function AdminRooms() {
                       max={6}
                       value={form.capacity || 2}
                       onChange={(e) => updateField('capacity', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                   </div>
                   <div>
@@ -201,7 +201,7 @@ export default function AdminRooms() {
                     <select
                       value={form.bedType}
                       onChange={(e) => updateField('bedType', e.target.value as BedType)}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     >
                       <option value="king">King</option>
                       <option value="queen">Queen</option>
@@ -217,7 +217,7 @@ export default function AdminRooms() {
                       min={1}
                       value={form.pricePerNight || ''}
                       onChange={(e) => updateField('pricePerNight', parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                   </div>
                   <div>
@@ -225,7 +225,7 @@ export default function AdminRooms() {
                     <select
                       value={form.status}
                       onChange={(e) => updateField('status', e.target.value as RoomStatus)}
-                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     >
                       <option value="available">Available</option>
                       <option value="maintenance">Maintenance</option>
@@ -239,7 +239,7 @@ export default function AdminRooms() {
                     value={form.description || ''}
                     onChange={(e) => updateField('description', e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal resize-none"
+                    className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand resize-none"
                   />
                 </div>
                 <div>
@@ -251,7 +251,7 @@ export default function AdminRooms() {
                         onClick={() => toggleAmenity(a)}
                         className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                           form.amenities?.includes(a)
-                            ? 'bg-teal-light text-teal border-teal'
+                            ? 'bg-brand-light text-brand border-brand'
                             : 'bg-warm-bg text-[#8a8984] border-warm-border hover:border-warm-border-strong'
                         }`}
                       >
@@ -269,7 +269,7 @@ export default function AdminRooms() {
                   </button>
                   <button
                     onClick={handleSave}
-                    className="flex-1 py-2.5 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark"
+                    className="flex-1 py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark"
                   >
                     {editing ? 'Save Changes' : 'Create Room'}
                   </button>

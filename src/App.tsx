@@ -8,6 +8,10 @@ import BookingConfirmation from '@/pages/BookingConfirmation';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import MyBookings from '@/pages/MyBookings';
+import Contact from '@/pages/Contact';
+import FAQ from '@/pages/FAQ';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
 import AdminOverview from '@/pages/admin/Overview';
 import AdminBookings from '@/pages/admin/Bookings';
 import AdminRooms from '@/pages/admin/Rooms';
@@ -19,7 +23,7 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-bg flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-teal/30 border-t-teal rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
       </div>
     );
   }
@@ -38,6 +42,10 @@ export default function App() {
       <Route path="/rooms/:id" element={<RoomDetail />} />
       <Route path="/booking" element={<BookingFlow />} />
       <Route path="/booking-confirmation" element={<BookingConfirmation />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route

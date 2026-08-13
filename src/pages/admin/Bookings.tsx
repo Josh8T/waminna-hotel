@@ -61,13 +61,13 @@ export default function AdminBookings() {
             placeholder="Search by guest or reference..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+            className="w-full pl-9 pr-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+          className="px-3 py-2 border border-warm-border rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
         >
           <option value="all">All Status</option>
           <option value="confirmed">Confirmed</option>
@@ -199,7 +199,7 @@ export default function AdminBookings() {
               onClick={() => setPage(p)}
               className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium ${
                 page === p
-                  ? 'bg-teal-light text-teal border border-teal'
+                  ? 'bg-brand-light text-brand border border-brand'
                   : 'border border-warm-border bg-warm-secondary text-[#5c5a54] hover:bg-warm-tertiary'
               }`}
             >

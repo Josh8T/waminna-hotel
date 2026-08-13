@@ -62,8 +62,8 @@ export default function Home() {
       {/* Hero */}
       <section className="relative h-[70vh] min-h-[480px] max-h-[700px] flex items-center justify-center overflow-hidden">
         <img
-          src="/images/hero-bg.jpg"
-          alt="Charles's Stay boutique hotel exterior"
+          src={`${import.meta.env.BASE_URL}images/corridor/corridor3.png`}
+          alt="Waminna Hotel interior"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[rgba(26,25,23,0.6)] via-[rgba(26,25,23,0.2)] to-[rgba(26,25,23,0.1)]" />
@@ -83,7 +83,7 @@ export default function Home() {
             </Link>
             <button
               onClick={() => searchRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              className="px-5 py-2.5 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+              className="px-5 py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
             >
               Check Availability
             </button>
@@ -109,7 +109,7 @@ export default function Home() {
                   value={checkIn}
                   onChange={(e) => setCheckIn(e.target.value)}
                   min={tomorrow.toISOString().split('T')[0]}
-                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function Home() {
                   value={checkOut}
                   onChange={(e) => setCheckOut(e.target.value)}
                   min={checkIn || dayAfter.toISOString().split('T')[0]}
-                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal"
+                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                 />
               </div>
             </div>
@@ -137,7 +137,7 @@ export default function Home() {
                 <select
                   value={guests}
                   onChange={(e) => setGuests(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal appearance-none bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 border border-warm-border rounded-md text-sm text-[#1a1917] focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand appearance-none bg-white"
                 >
                   {[1, 2, 3, 4, 5, 6].map((n) => (
                     <option key={n} value={n}>
@@ -150,7 +150,7 @@ export default function Home() {
             <div className="flex items-end">
               <button
                 onClick={handleSearch}
-                className="w-full py-2.5 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+                className="w-full py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
               >
                 Search
               </button>
@@ -163,7 +163,7 @@ export default function Home() {
       <section className="py-16 sm:py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10 reveal">
-            <span className="text-[11px] font-medium tracking-widest uppercase text-teal">
+            <span className="text-[11px] font-medium tracking-widest uppercase text-brand">
               Our Rooms
             </span>
             <h2 className="text-2xl sm:text-3xl font-semibold text-[#1a1917] mt-2">
@@ -193,7 +193,7 @@ export default function Home() {
                     </span>
                     <Link
                       to={`/rooms/${room.id}`}
-                      className="text-sm font-medium text-teal hover:underline"
+                      className="text-sm font-medium text-brand hover:underline"
                     >
                       View Details
                     </Link>
@@ -205,7 +205,7 @@ export default function Home() {
           <div className="text-center mt-8">
             <Link
               to="/rooms"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-teal hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
             >
               View All Rooms <ArrowRight className="w-4 h-4" />
             </Link>
@@ -217,7 +217,7 @@ export default function Home() {
       <section className="py-16 sm:py-20 px-4 bg-warm-secondary">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10 reveal">
-            <span className="text-[11px] font-medium tracking-widest uppercase text-teal">
+            <span className="text-[11px] font-medium tracking-widest uppercase text-brand">
               Amenities
             </span>
             <h2 className="text-2xl sm:text-3xl font-semibold text-[#1a1917] mt-2">
@@ -233,7 +233,7 @@ export default function Home() {
             ].map(({ icon: Icon, label, desc }) => (
               <div key={label} className="text-center">
                 <div className="w-10 h-10 mx-auto mb-3 flex items-center justify-center">
-                  <Icon className="w-8 h-8 text-teal" strokeWidth={1.5} />
+                  <Icon className="w-8 h-8 text-brand" strokeWidth={1.5} />
                 </div>
                 <p className="text-sm font-medium text-[#1a1917]">{label}</p>
                 <p className="text-xs text-[#8a8984] mt-0.5">{desc}</p>

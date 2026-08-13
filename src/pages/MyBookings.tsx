@@ -72,7 +72,7 @@ export default function MyBookings() {
             </p>
             <Link
               to="/rooms"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
             >
               Browse Rooms <ArrowRight className="w-4 h-4" />
             </Link>
@@ -128,7 +128,7 @@ export default function MyBookings() {
                       </p>
                       <Link
                         to={`/booking-confirmation?ref=${booking.bookingReference}`}
-                        className="text-xs text-teal hover:underline mt-1 inline-block"
+                        className="text-xs text-brand hover:underline mt-1 inline-block"
                       >
                         View Details
                       </Link>

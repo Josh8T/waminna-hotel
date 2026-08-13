@@ -26,7 +26,7 @@ export default function BookingConfirmation() {
         <Header />
         <div className="pt-24 text-center px-4">
           <p className="text-lg text-[#5c5a54] mb-4">Booking not found</p>
-          <Link to="/" className="text-teal hover:underline">
+          <Link to="/" className="text-brand hover:underline">
             Back to home
           </Link>
         </div>
@@ -40,7 +40,7 @@ export default function BookingConfirmation() {
       <div className="min-h-screen bg-warm-bg">
         <Header />
         <div className="pt-24 text-center">
-          <div className="w-8 h-8 border-2 border-teal/30 border-t-teal rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-brand/30 border-t-brand rounded-full animate-spin mx-auto" />
         </div>
       </div>
     );
@@ -65,8 +65,8 @@ export default function BookingConfirmation() {
           <p className="text-[11px] font-medium tracking-widest uppercase text-[#8a8984] mb-2">
             Your Booking Reference
           </p>
-          <div className="inline-block px-6 py-3 border-2 border-dashed border-teal/30 rounded-lg bg-teal-light/30">
-            <span className="font-mono text-xl font-medium text-teal tracking-wider">
+          <div className="inline-block px-6 py-3 border-2 border-dashed border-brand/30 rounded-lg bg-brand-light/30">
+            <span className="font-mono text-xl font-medium text-brand tracking-wider">
               {booking.bookingReference}
             </span>
           </div>
@@ -117,7 +117,7 @@ export default function BookingConfirmation() {
             </div>
             <div>
               <p className="text-[11px] text-[#8a8984] mb-0.5">Total Paid</p>
-              <p className="text-sm font-semibold text-teal">${booking.totalAmount.toFixed(2)}</p>
+              <p className="text-sm font-semibold text-brand">${booking.totalAmount.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function BookingConfirmation() {
           </Link>
           <Link
             to="/my-bookings"
-            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-teal text-white rounded-md text-sm font-medium hover:bg-teal-dark transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
           >
             View My Bookings <ArrowRight className="w-4 h-4" />
           </Link>

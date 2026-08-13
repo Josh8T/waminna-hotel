@@ -45,7 +45,7 @@ export default function AdminOverview() {
     { label: 'Check-ins Today', value: stats.todayCheckins.toString(), icon: TrendingUp, color: 'text-[#1a1917]' },
     { label: 'Active Bookings', value: stats.activeBookings.toString(), icon: Users2, color: 'text-[#1a1917]' },
     { label: 'Rooms Occupied', value: `${stats.occupiedRooms}/${stats.totalRooms}`, icon: BedDouble, color: 'text-[#1a1917]' },
-    { label: 'Revenue (Month)', value: `$${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-teal' },
+    { label: 'Revenue (Month)', value: `$${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-brand' },
   ];
 
   const occupancyRooms = [
@@ -75,7 +75,7 @@ export default function AdminOverview() {
             <p className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-2">{s.label}</p>
             <div className="flex items-center justify-between">
               <span className={`text-2xl font-semibold ${s.color}`}>{s.value}</span>
-              <s.icon className={`w-5 h-5 ${s.color === 'text-teal' ? 'text-teal' : 'text-[#d3d0c8]'}`} />
+              <s.icon className={`w-5 h-5 ${s.color === 'text-brand' ? 'text-brand' : 'text-[#d3d0c8]'}`} />
             </div>
           </div>
         ))}
