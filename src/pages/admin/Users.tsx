@@ -1,17 +1,62 @@
-import { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { getUsers, updateUserRole, initializeData } from '@/lib/data';
-import type { User, UserRole } from '@/lib/data';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, RefreshCw } from 'lucide-react';
+import type { UserRole } from '@/lib/data';
+import type { AuthUser } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AuthUser[]>([]);
   const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const { data, error: err } = await supabase
+        .from('profiles')
+        .select('id, email, first_name, last_name, phone, role, created_at')
+        .order('created_at', { ascending: false });
+
+      if (err) throw err;
+
+      const mapped: AuthUser[] = (data || []).map((p) => ({
+        id: p.id,
+        email: p.email,
+        firstName: p.first_name || '',
+        lastName: p.last_name || '',
+        phone: p.phone ?? null,
+        role: p.role as UserRole,
+      }));
+      setUsers(mapped);
+    } catch {
+      setError('Failed to load users. Check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    initializeData();
-    setUsers(getUsers());
-  }, []);
+    loadUsers();
+  }, [loadUsers]);
+
+  const handleRoleChange = async (id: string, role: UserRole) => {
+    // Optimistic update
+    setUsers((prev) => prev.map((u) => u.id === id ? { ...u, role } : u));
+
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', id);
+
+    if (err) {
+      // Revert on failure
+      await loadUsers();
+      alert('Failed to update role. You may not have permission.');
+    }
+  };
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -22,11 +67,6 @@ export default function AdminUsers() {
       u.email.toLowerCase().includes(q)
     );
   });
-
-  const handleRoleChange = (id: number, role: UserRole) => {
-    updateUserRole(id, role);
-    setUsers(getUsers());
-  };
 
   const roleBadge = (role: string) => {
     const map: Record<string, string> = {
@@ -44,7 +84,16 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout>
-      <h1 className="text-xl font-semibold text-[#1a1917] mb-4">Users</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-[#1a1917]">Users</h1>
+        <button
+          onClick={loadUsers}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-warm-border rounded-md hover:bg-warm-bg transition-colors text-[#5c5a54]"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </button>
+      </div>
 
       <div className="mb-4">
         <div className="relative max-w-sm">
@@ -59,6 +108,12 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white rounded-lg border border-warm-border overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -67,15 +122,20 @@ export default function AdminUsers() {
                 <th className="text-left px-4 py-2.5 text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">Name</th>
                 <th className="text-left px-4 py-2.5 text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">Email</th>
                 <th className="text-left px-4 py-2.5 text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">Role</th>
-                <th className="text-left px-4 py-2.5 text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">Joined</th>
                 <th className="text-left px-4 py-2.5 text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-sm text-[#8a8984]">
-                    No users found
+                  <td colSpan={4} className="text-center py-8">
+                    <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin mx-auto" />
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-sm text-[#8a8984]">
+                    {search ? 'No users match your search' : 'No users found'}
                   </td>
                 </tr>
               ) : (
@@ -88,9 +148,6 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3 text-sm text-[#5c5a54]">{u.email}</td>
                     <td className="px-4 py-3">{roleBadge(u.role)}</td>
-                    <td className="px-4 py-3 text-sm text-[#5c5a54]">
-                      {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={u.role}
@@ -110,6 +167,10 @@ export default function AdminUsers() {
           </table>
         </div>
       </div>
+
+      <p className="mt-3 text-xs text-[#8a8984]">
+        Roles are stored server-side in Supabase — changes take effect immediately.
+      </p>
     </AdminLayout>
   );
 }

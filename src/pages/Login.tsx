@@ -13,13 +13,21 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Basic sanitization
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(cleanEmail, password);
+      if (result.success) {
         navigate('/');
       } else {
-        setError('Invalid email or password');
+        setError(result.error ?? 'Invalid email or password.');
       }
     } finally {
       setIsLoading(false);
@@ -37,36 +45,40 @@ export default function Login() {
           <p className="text-sm text-[#8a8984]">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {error && (
-            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+            <div role="alert" className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1.5">
+            <label htmlFor="login-email" className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1.5">
               Email Address
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1.5">
+            <label htmlFor="login-password" className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1.5">
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
               className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
               placeholder="Enter your password"
             />
@@ -91,12 +103,6 @@ export default function Login() {
             Create one
           </Link>
         </p>
-
-        <div className="mt-8 pt-6 border-t border-warm-border text-center">
-          <p className="text-xs text-[#8a8984] mb-2">Demo credentials</p>
-          <p className="text-xs text-[#8a8984]">Admin: admin@charlesstay.com / admin123</p>
-          <p className="text-xs text-[#8a8984]">Staff: staff@charlesstay.com / staff123</p>
-        </div>
       </div>
     </div>
   );

@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Check, Users, BedDouble, Maximize, Eye } from 'lucide-react';
-import { getRoomById, getAvailableRooms } from '@/lib/data';
+import { getRoomById, getAvailableRooms, getPhotoUrl } from '@/lib/data';
 import type { Room } from '@/lib/data';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 
 export default function RoomDetail() {
+  const { t } = useThemeLanguage();
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const roomId = parseInt(id || '0');
@@ -47,12 +49,12 @@ export default function RoomDetail() {
 
   if (!room) {
     return (
-      <div className="min-h-screen bg-warm-bg">
+      <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2]">
         <Header />
         <div className="pt-24 text-center">
-          <p className="text-lg text-[#5c5a54]">Room not found</p>
-          <Link to="/rooms" className="text-brand hover:underline mt-2 inline-block">
-            Back to rooms
+          <p className="text-lg text-[#827D75] dark:text-[#ded9d6]">{t('Room not found', 'Kamar tidak ditemukan')}</p>
+          <Link to="/rooms" className="text-[#C5A059] hover:underline mt-2 inline-block font-medium">
+            {t('Back to rooms', 'Kembali ke katalog kamar')}
           </Link>
         </div>
         <Footer />
@@ -63,17 +65,17 @@ export default function RoomDetail() {
   const queryStr = `?roomId=${room.id}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`;
 
   return (
-    <div className="min-h-screen bg-warm-bg">
+    <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2] transition-colors">
       <Header />
 
-      {/* Breadcrumb */}
-      <div className="pt-16 bg-warm-secondary border-b border-warm-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+      {/* Breadcrumb & Navigation Header */}
+      <div className="pt-20 pb-4 bg-[#f2ede9] dark:bg-[#242320] border-b border-[#e8e6e1] dark:border-[#30312f]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <Link
             to="/rooms"
-            className="inline-flex items-center gap-1.5 text-sm text-brand hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold text-[#414930] dark:text-[#C5A059] hover:underline uppercase tracking-wider"
           >
-            <ChevronLeft className="w-4 h-4" /> Back to all rooms
+            <ChevronLeft className="w-4 h-4" /> {t('Back to Accommodations Catalog', 'Kembali ke Katalog Kamar')}
           </Link>
         </div>
       </div>
@@ -86,9 +88,12 @@ export default function RoomDetail() {
             onClick={() => openLightbox(0)}
           >
             <img
-              src={room.photos[0]}
+              src={getPhotoUrl(room.photos?.[0])}
               alt={room.name}
               className="w-full h-full object-cover hover:scale-[1.02] transition-transform"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+              }}
             />
           </div>
           {room.photos.slice(1, 4).map((photo, i) => (
@@ -98,13 +103,16 @@ export default function RoomDetail() {
               onClick={() => openLightbox(i + 1)}
             >
               <img
-                src={photo}
+                src={getPhotoUrl(photo)}
                 alt={`${room.name} view ${i + 2}`}
                 className="w-full h-full object-cover hover:scale-[1.02] transition-transform"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                }}
               />
               {i === 2 && room.photos.length > 4 && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white font-medium text-sm">+{room.photos.length - 4} more</span>
+                  <span className="text-white font-medium text-sm">+{room.photos.length - 4} {t('more', 'lagi')}</span>
                 </div>
               )}
             </div>
@@ -116,57 +124,57 @@ export default function RoomDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12 flex flex-col lg:flex-row gap-8">
         {/* Left - Details */}
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1a1917] mb-3">{room.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-display font-normal text-[#1c1b19] dark:text-[#F7F5F2] mb-3">{room.name}</h1>
           <div className="flex flex-wrap gap-2 mb-6">
-            <span className="px-2.5 py-1 bg-brand-light text-brand text-xs font-medium rounded-full capitalize">
+            <span className="px-2.5 py-1 bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] text-xs font-sans font-semibold rounded-full capitalize">
               {room.type}
             </span>
-            <span className="px-2.5 py-1 bg-warm-secondary text-[#5c5a54] text-xs font-medium rounded-full">
-              {room.capacity} guests
+            <span className="px-2.5 py-1 bg-[#f5f3f0] dark:bg-[#242320] text-[#46483f] dark:text-[#ded9d6] text-xs font-sans font-medium rounded-full">
+              {room.capacity} {t('guests', 'tamu')}
             </span>
-            <span className="px-2.5 py-1 bg-warm-secondary text-[#5c5a54] text-xs font-medium rounded-full capitalize">
-              {room.bedType} bed
+            <span className="px-2.5 py-1 bg-[#f5f3f0] dark:bg-[#242320] text-[#46483f] dark:text-[#ded9d6] text-xs font-sans font-medium rounded-full capitalize">
+              {room.bedType} {t('bed', 'tempat tidur')}
             </span>
           </div>
 
-          <div className="border-t border-warm-border pt-6 mb-6">
-            <h3 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-3">
-              Description
+          <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-6 mb-6">
+            <h3 className="text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-3">
+              {t('Description', 'Deskripsi')}
             </h3>
-            <p className="text-sm text-[#5c5a54] leading-relaxed">{room.description}</p>
+            <p className="text-sm text-[#46483f] dark:text-[#ded9d6] leading-relaxed font-sans">{room.description}</p>
           </div>
 
-          <div className="border-t border-warm-border pt-6 mb-6">
-            <h3 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-3">
-              Room Details
+          <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-6 mb-6">
+            <h3 className="text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-3">
+              {t('Room Details', 'Detail Kamar')}
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: Maximize, label: 'Room Size', value: room.size || 'N/A' },
-                { icon: BedDouble, label: 'Bed Type', value: `${room.bedType.charAt(0).toUpperCase() + room.bedType.slice(1)} Bed` },
-                { icon: Users, label: 'Max Guests', value: `${room.capacity} guests` },
-                { icon: Eye, label: 'View', value: room.view || 'N/A' },
+                { icon: Maximize, label: t('Room Size', 'Ukuran Kamar'), value: room.size || 'N/A' },
+                { icon: BedDouble, label: t('Bed Type', 'Tipe Tempat Tidur'), value: `${room.bedType.charAt(0).toUpperCase() + room.bedType.slice(1)} Bed` },
+                { icon: Users, label: t('Max Guests', 'Kapasitas Maksimal'), value: `${room.capacity} ${t('guests', 'tamu')}` },
+                { icon: Eye, label: t('View', 'Pemandangan'), value: room.view || 'N/A' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 text-brand" />
+                  <Icon className="w-4 h-4 text-[#C5A059]" />
                   <div>
-                    <p className="text-[11px] text-[#8a8984]">{label}</p>
-                    <p className="text-sm text-[#1a1917]">{value}</p>
+                    <p className="text-[11px] font-sans text-[#827D75] dark:text-white/60">{label}</p>
+                    <p className="text-sm text-[#1c1b19] dark:text-[#F7F5F2]">{value}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-warm-border pt-6">
-            <h3 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-3">
-              Amenities
+          <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-6">
+            <h3 className="text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-3">
+              {t('Amenities', 'Fasilitas')}
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {room.amenities.map((amenity) => (
                 <div key={amenity} className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-green-600" />
-                  <span className="text-sm text-[#5c5a54]">{amenity}</span>
+                  <Check className="w-3.5 h-3.5 text-[#C5A059]" />
+                  <span className="text-sm text-[#46483f] dark:text-[#ded9d6]">{amenity}</span>
                 </div>
               ))}
             </div>
@@ -175,49 +183,49 @@ export default function RoomDetail() {
 
         {/* Right - Booking Panel */}
         <div className="lg:w-80 lg:min-w-[320px]">
-          <div className="lg:sticky lg:top-20 bg-white rounded-xl shadow-lg p-5 border border-warm-border">
-            <p className="text-2xl font-semibold text-[#1a1917] mb-4">
+          <div className="lg:sticky lg:top-20 bg-white dark:bg-[#242320] rounded-xl shadow-lg p-5 border border-[#e8e6e1] dark:border-[#30312f]">
+            <p className="text-2xl font-sans font-bold text-[#414930] dark:text-[#C5A059] mb-4">
               ${room.pricePerNight}
-              <span className="text-sm font-normal text-[#8a8984]"> / night</span>
+              <span className="text-sm font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
             </p>
 
             <div className="space-y-3 mb-4">
               <div>
-                <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                  Check-in
+                <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-1">
+                  {t('Check-in', 'Tanggal Masuk')}
                 </label>
                 <input
                   type="date"
                   value={checkIn}
                   onChange={(e) => setCheckIn(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                  Check-out
+                <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-1">
+                  {t('Check-out', 'Tanggal Keluar')}
                 </label>
                 <input
                   type="date"
                   value={checkOut}
                   onChange={(e) => setCheckOut(e.target.value)}
                   min={checkIn || new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                  Guests
+                <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-1">
+                  {t('Guests', 'Tamu')}
                 </label>
                 <select
                   value={guests}
                   onChange={(e) => setGuests(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand bg-white"
+                  className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 >
                   {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      {n} {n === 1 ? 'Guest' : 'Guests'}
+                    <option key={n} value={n} className="dark:bg-[#242320]">
+                      {n} {n === 1 ? t('Guest', 'Tamu') : t('Guests', 'Tamu')}
                     </option>
                   ))}
                 </select>
@@ -225,37 +233,41 @@ export default function RoomDetail() {
             </div>
 
             {priceSummary && (
-              <div className="border-t border-warm-border pt-3 mb-4 space-y-1.5">
+              <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-3 mb-4 space-y-1.5 font-sans">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#5c5a54]">
-                    ${room.pricePerNight} × {nights} nights
+                  <span className="text-[#46483f] dark:text-[#ded9d6]">
+                    ${room.pricePerNight} × {nights} {t('nights', 'malam')}
                   </span>
-                  <span className="text-[#1a1917]">${priceSummary.subtotal}</span>
+                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">${priceSummary.subtotal}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#5c5a54]">Taxes (10%)</span>
-                  <span className="text-[#1a1917]">${priceSummary.tax.toFixed(2)}</span>
+                  <span className="text-[#46483f] dark:text-[#ded9d6]">{t('Taxes (10%)', 'Pajak (10%)')}</span>
+                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">${priceSummary.tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-base font-semibold pt-1 border-t border-warm-border">
+                <div className="flex justify-between text-base font-semibold pt-1 border-t border-[#e8e6e1] dark:border-[#30312f]">
                   <span>Total</span>
-                  <span>${priceSummary.total.toFixed(2)}</span>
+                  <span className="text-[#C5A059]">${priceSummary.total.toFixed(2)}</span>
                 </div>
               </div>
             )}
 
             <Link
               to={`/booking${queryStr}`}
-              className={`block w-full py-3 text-center rounded-md text-sm font-medium transition-colors ${
+              className={`block w-full py-3 text-center rounded-md text-xs uppercase tracking-wider font-sans font-semibold transition-all ${
                 checkIn && checkOut && isAvailable
-                  ? 'bg-brand text-white hover:bg-brand-dark'
-                  : 'bg-warm-tertiary text-[#8a8984] cursor-not-allowed pointer-events-none'
+                  ? 'bg-[#C5A059] text-[#1C1C19] hover:bg-[#b08d49] shadow-sm'
+                  : 'bg-[#827D75]/30 text-[#827D75] cursor-not-allowed pointer-events-none'
               }`}
             >
-              {checkIn && checkOut ? (isAvailable ? 'Book Now' : 'Not Available') : 'Select Dates'}
+              {checkIn && checkOut
+                ? isAvailable
+                  ? t('Book Now', 'Pesan Sekarang')
+                  : t('Not Available', 'Tidak Tersedia')
+                : t('Select Dates', 'Pilih Tanggal')}
             </Link>
 
-            <p className="text-[11px] text-[#8a8984] text-center mt-3">
-              Free cancellation up to 3 days before check-in
+            <p className="text-[11px] text-[#827D75] dark:text-white/60 text-center mt-3 font-sans">
+              {t('Free cancellation up to 3 days before check-in', 'Bebas pembatalan hingga 3 hari sebelum waktu masuk')}
             </p>
           </div>
         </div>

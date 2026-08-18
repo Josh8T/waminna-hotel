@@ -122,7 +122,7 @@ export default function AdminBookings() {
                         <p className="text-sm font-medium text-[#1a1917]">
                           {b.guestFirstName} {b.guestLastName}
                         </p>
-                        <p className="font-mono text-[10px] text-[#8a8984]">{b.bookingReference}</p>
+                        <p className="font-sans font-semibold text-[10px] text-[#8a8984]">{b.bookingReference}</p>
                       </td>
                       <td className="px-4 py-3 text-sm text-[#5c5a54]">
                         {room?.name || `Room ${b.roomId}`}

@@ -1,20 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { getRooms, getAvailableRooms, initializeData } from '@/lib/data';
+import { getRooms, getAvailableRooms, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType } from '@/lib/data';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 
 export default function RoomListing() {
-  const [searchParams] = useSearchParams();
-  const urlCheckIn = searchParams.get('checkIn') || '';
-  const urlCheckOut = searchParams.get('checkOut') || '';
-  const urlGuests = searchParams.get('guests') || '2';
+  const { t } = useThemeLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [checkIn] = useState(urlCheckIn);
-  const [checkOut] = useState(urlCheckOut);
-  const [guests] = useState(urlGuests);
+  const checkIn = searchParams.get('checkIn') || '';
+  const checkOut = searchParams.get('checkOut') || '';
+  const guests = searchParams.get('guests') || '';
+
   const [sortBy, setSortBy] = useState('price-asc');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -23,17 +23,24 @@ export default function RoomListing() {
   const [selectedBeds, setSelectedBeds] = useState<BedType[]>([]);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [, setRefreshKey] = useState(0);
 
   useEffect(() => {
     initializeData();
+    syncRoomsWithSupabase().then(() => {
+      setRefreshKey((k) => k + 1);
+    });
   }, []);
 
   const rooms = useMemo(() => {
     let result: Room[];
     if (checkIn && checkOut) {
-      result = getAvailableRooms(checkIn, checkOut, parseInt(guests) || 2);
+      result = getAvailableRooms(checkIn, checkOut, guests ? parseInt(guests) : undefined);
     } else {
       result = getRooms();
+      if (guests && parseInt(guests) > 0) {
+        result = result.filter((r) => r.capacity >= parseInt(guests));
+      }
     }
 
     // Apply filters
@@ -83,33 +90,48 @@ export default function RoomListing() {
     setSelectedBeds([]);
     setMinPrice('');
     setMaxPrice('');
+    setSearchParams({});
   };
 
-  const hasActiveFilters = selectedTypes.length > 0 || selectedBeds.length > 0 || minPrice || maxPrice;
+  const hasActiveFilters = selectedTypes.length > 0 || selectedBeds.length > 0 || minPrice || maxPrice || checkIn || checkOut || guests;
 
   return (
-    <div className="min-h-screen bg-warm-bg">
+    <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2] transition-colors">
       <Header />
 
-      {/* Search Summary */}
-      <div className="pt-16 bg-warm-secondary border-b border-warm-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      {/* Search Summary & Header Banner */}
+      <div className="pt-20 pb-8 bg-[#f2ede9] dark:bg-[#242320] border-b border-[#e8e6e1] dark:border-[#30312f]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <span className="text-xs font-semibold tracking-widest uppercase text-[#785927] dark:text-[#C5A059] font-sans">
+            {t('Accommodation Catalog', 'Katalog Akomodasi')}
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-display font-normal text-[#1c1b19] dark:text-[#F7F5F2] mt-1 mb-3">
+            {t('Rooms & Sanctuary Suites', 'Kamar & Suite Suaka')}
+          </h1>
           <div className="flex flex-wrap items-center gap-3">
-            {(checkIn || checkOut) && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full text-sm text-[#5c5a54] border border-warm-border">
-                {checkIn && checkOut
-                  ? `${new Date(checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(checkOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                  : 'Select dates'}
+            {checkIn && checkOut && (
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white dark:bg-[#191816] rounded-full text-xs font-sans text-[#414930] dark:text-[#C5A059] border border-[#e8e6e1] dark:border-[#30312f]">
+                {`${new Date(checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(checkOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full text-sm text-[#5c5a54] border border-warm-border">
-              {guests} {parseInt(guests) === 1 ? 'Guest' : 'Guests'}
-            </span>
+            {guests && (
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white dark:bg-[#191816] rounded-full text-xs font-sans text-[#414930] dark:text-[#C5A059] border border-[#e8e6e1] dark:border-[#30312f]">
+                {guests} {parseInt(guests) === 1 ? t('Guest', 'Tamu') : t('Guests', 'Tamu')}
+              </span>
+            )}
+            {(checkIn || checkOut || guests) && (
+              <button
+                onClick={() => setSearchParams({})}
+                className="text-xs text-[#C5A059] hover:underline"
+              >
+                {t('Clear search', 'Hapus pencarian')}
+              </button>
+            )}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="lg:hidden ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-md text-sm text-[#5c5a54] border border-warm-border"
+              className="lg:hidden ml-auto inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white dark:bg-[#242320] rounded-md text-xs font-sans text-[#414930] dark:text-[#C5A059] border border-[#e8e6e1] dark:border-[#30312f]"
             >
-              <SlidersHorizontal className="w-4 h-4" /> Filters
+              <SlidersHorizontal className="w-4 h-4" /> {t('Filters', 'Filter')}
             </button>
           </div>
         </div>
@@ -123,31 +145,31 @@ export default function RoomListing() {
           } lg:block lg:static lg:w-60 lg:min-w-[240px] lg:mr-6`}
         >
           {showFilters && (
-            <div className="absolute inset-0 bg-black/30 lg:hidden" onClick={() => setShowFilters(false)} />
+            <div className="absolute inset-0 bg-black/50 lg:hidden" onClick={() => setShowFilters(false)} />
           )}
-          <div className="relative w-72 lg:w-full bg-white lg:bg-transparent lg:border-r lg:border-warm-border p-5 lg:pr-6 overflow-y-auto">
+          <div className="relative w-72 lg:w-full bg-white dark:bg-[#242320] lg:bg-transparent lg:border-r lg:border-[#e8e6e1] dark:lg:border-[#30312f] p-5 lg:pr-6 overflow-y-auto">
             {showFilters && (
               <button
                 onClick={() => setShowFilters(false)}
                 className="absolute top-4 right-4 lg:hidden"
                 aria-label="Close filters"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-[#1b1c1a] dark:text-[#F7F5F2]" />
               </button>
             )}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-[#1a1917]">Filters</h3>
+              <h3 className="text-sm font-semibold text-[#1a1917] dark:text-[#F7F5F2]">{t('Filters', 'Filter')}</h3>
               {hasActiveFilters && (
-                <button onClick={clearFilters} className="text-xs text-brand hover:underline">
-                  Reset
+                <button onClick={clearFilters} className="text-xs text-[#C5A059] hover:underline">
+                  {t('Reset', 'Atur Ulang')}
                 </button>
               )}
             </div>
 
             {/* Room Type */}
             <div className="mb-5">
-              <h4 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-2.5">
-                Room Type
+              <h4 className="text-[11px] font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-2.5 font-sans">
+                {t('Room Type', 'Tipe Kamar')}
               </h4>
               {(['standard', 'deluxe', 'suite'] as RoomType[]).map((type) => (
                 <label key={type} className="flex items-center gap-2.5 mb-2 cursor-pointer">
@@ -155,17 +177,17 @@ export default function RoomListing() {
                     type="checkbox"
                     checked={selectedTypes.includes(type)}
                     onChange={() => toggleType(type)}
-                    className="w-4 h-4 rounded border-warm-border text-brand focus:ring-brand"
+                    className="w-4 h-4 rounded border-[#e8e6e1] dark:border-[#30312f] text-[#414930] dark:text-[#C5A059] focus:ring-[#C5A059]"
                   />
-                  <span className="text-sm text-[#5c5a54] capitalize">{type}</span>
+                  <span className="text-sm text-[#46483f] dark:text-[#ded9d6] capitalize">{type}</span>
                 </label>
               ))}
             </div>
 
             {/* Bed Type */}
             <div className="mb-5">
-              <h4 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-2.5">
-                Bed Type
+              <h4 className="text-[11px] font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-2.5 font-sans">
+                {t('Bed Type', 'Tipe Tempat Tidur')}
               </h4>
               {(['king', 'queen', 'twin'] as BedType[]).map((bed) => (
                 <label key={bed} className="flex items-center gap-2.5 mb-2 cursor-pointer">
@@ -173,17 +195,17 @@ export default function RoomListing() {
                     type="checkbox"
                     checked={selectedBeds.includes(bed)}
                     onChange={() => toggleBed(bed)}
-                    className="w-4 h-4 rounded border-warm-border text-brand focus:ring-brand"
+                    className="w-4 h-4 rounded border-[#e8e6e1] dark:border-[#30312f] text-[#414930] dark:text-[#C5A059] focus:ring-[#C5A059]"
                   />
-                  <span className="text-sm text-[#5c5a54] capitalize">{bed}</span>
+                  <span className="text-sm text-[#46483f] dark:text-[#ded9d6] capitalize">{bed}</span>
                 </label>
               ))}
             </div>
 
             {/* Price Range */}
             <div className="mb-5">
-              <h4 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-2.5">
-                Price Range
+              <h4 className="text-[11px] font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-2.5 font-sans">
+                {t('Price Range', 'Rentang Harga')}
               </h4>
               <div className="flex items-center gap-2">
                 <input
@@ -191,15 +213,15 @@ export default function RoomListing() {
                   placeholder="Min"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] rounded-md text-sm text-[#1c1b19] dark:text-[#F7F5F2] focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
-                <span className="text-[#8a8984]">-</span>
+                <span className="text-[#827D75]">-</span>
                 <input
                   type="number"
                   placeholder="Max"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                  className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] rounded-md text-sm text-[#1c1b19] dark:text-[#F7F5F2] focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
             </div>
@@ -209,27 +231,29 @@ export default function RoomListing() {
         {/* Results */}
         <main className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-[#8a8984]">Showing {rooms.length} rooms</span>
+            <span className="text-sm text-[#827D75] dark:text-[#ded9d6]">
+              {t(`Showing ${rooms.length} rooms`, `Menampilkan ${rooms.length} kamar`)}
+            </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-1.5 border border-warm-border rounded-md text-sm text-[#5c5a54] bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+              className="px-3 py-1.5 border border-[#e8e6e1] dark:border-[#30312f] rounded-md text-sm text-[#46483f] dark:text-[#F7F5F2] bg-white dark:bg-[#242320] focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
             >
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="capacity">Capacity</option>
+              <option value="price-asc">{t('Price: Low to High', 'Harga: Rendah ke Tinggi')}</option>
+              <option value="price-desc">{t('Price: High to Low', 'Harga: Tinggi ke Rendah')}</option>
+              <option value="capacity">{t('Capacity', 'Kapasitas')}</option>
             </select>
           </div>
 
           {rooms.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-lg text-[#5c5a54] mb-2">No rooms match your criteria</p>
-              <p className="text-sm text-[#8a8984] mb-4">Try adjusting your filters or dates</p>
+            <div className="text-center py-16 bg-white dark:bg-[#242320] rounded-xl border border-[#e8e6e1] dark:border-[#30312f]">
+              <p className="text-lg text-[#1c1b19] dark:text-[#F7F5F2] mb-2">{t('No rooms match your criteria', 'Tidak ada kamar yang sesuai kriteria Anda')}</p>
+              <p className="text-sm text-[#827D75] dark:text-[#ded9d6] mb-4">{t('Try adjusting your filters or dates', 'Coba sesuaikan filter atau tanggal Anda')}</p>
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors"
+                className="px-4 py-2 bg-[#C5A059] text-[#1C1C19] rounded-md text-sm font-medium hover:bg-[#b08d49] transition-colors"
               >
-                Clear Filters
+                {t('Clear Filters', 'Hapus Filter')}
               </button>
             </div>
           ) : (
@@ -237,38 +261,41 @@ export default function RoomListing() {
               {rooms.map((room) => (
                 <div
                   key={room.id}
-                  className="flex flex-col sm:flex-row bg-white border border-warm-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  className="flex flex-col sm:flex-row bg-white dark:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="sm:w-36 sm:min-w-[144px] md:w-44 md:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-32 overflow-hidden">
+                  <div className="sm:w-44 sm:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-36 overflow-hidden">
                     <img
-                      src={room.photos[0]}
+                      src={getPhotoUrl(room.photos?.[0])}
                       alt={room.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                      }}
                     />
                   </div>
                   <div className="flex-1 p-4 flex flex-col justify-between">
                     <div>
-                      <h3 className="text-base font-semibold text-[#1a1917] mb-1">{room.name}</h3>
+                      <h3 className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2] mb-1 font-display">{room.name}</h3>
                       <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className="px-2 py-0.5 bg-brand-light text-brand text-[11px] font-medium rounded-full capitalize">
+                        <span className="px-2 py-0.5 bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] text-[11px] font-sans font-semibold rounded-full capitalize">
                           {room.type}
                         </span>
-                        <span className="px-2 py-0.5 bg-warm-secondary text-[#5c5a54] text-[11px] font-medium rounded-full">
-                          {room.capacity} guests
+                        <span className="px-2 py-0.5 bg-[#f5f3f0] dark:bg-[#191816] text-[#46483f] dark:text-[#ded9d6] text-[11px] font-sans font-medium rounded-full">
+                          {room.capacity} {t('guests', 'tamu')}
                         </span>
                       </div>
-                      <p className="text-sm text-[#8a8984] line-clamp-2">{room.description}</p>
+                      <p className="text-sm text-[#827D75] dark:text-[#ded9d6] line-clamp-2">{room.description}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-sm font-semibold text-[#1a1917]">
+                    <div className="flex items-center justify-between mt-3 border-t border-[#e8e6e1]/50 dark:border-[#30312f] pt-2">
+                      <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
                         ${room.pricePerNight}
-                        <span className="text-xs font-normal text-[#8a8984]">/night</span>
+                        <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
                       </span>
                       <Link
                         to={`/rooms/${room.id}${checkIn ? `?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}` : ''}`}
-                        className="text-sm font-medium text-brand hover:underline"
+                        className="text-xs font-sans font-semibold uppercase tracking-wider text-[#C5A059] hover:underline"
                       >
-                        View details
+                        {t('View Details', 'Lihat Detail')}
                       </Link>
                     </div>
                   </div>

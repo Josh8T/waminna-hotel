@@ -1,70 +1,53 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Search, ChevronDown, HelpCircle, ShieldCheck, Clock, CreditCard, Sparkles } from 'lucide-react';
-
-interface FAQItem {
-  id: string;
-  category: 'booking' | 'stay' | 'amenities' | 'policies';
-  question: string;
-  answer: string;
-}
-
-const FAQ_ITEMS: FAQItem[] = [
-  {
-    id: '1',
-    category: 'booking',
-    question: 'What are the standard check-in and check-out times?',
-    answer: 'Standard check-in begins at 3:00 PM, and check-out is by 12:00 PM (Noon). Guaranteed early check-in or late check-out options can be added during your booking process.',
-  },
-  {
-    id: '2',
-    category: 'booking',
-    question: 'Can I cancel or modify my room reservation?',
-    answer: 'Yes! Free cancellation is allowed up to 48 hours prior to your scheduled check-in date. Cancellations within 48 hours are subject to a one-night room charge.',
-  },
-  {
-    id: '3',
-    category: 'stay',
-    question: 'Is breakfast included with room bookings?',
-    answer: 'Select room packages include daily gourmet buffet breakfast. If your room rate does not include breakfast, you can easily add our Gourmet Buffet Breakfast add-on during checkout for $25/night.',
-  },
-  {
-    id: '4',
-    category: 'amenities',
-    question: 'Does Waminna Hotel offer free high-speed Wi-Fi?',
-    answer: 'Complimentary high-speed fiber Wi-Fi is available across all guest rooms, suites, executive lounges, and public areas within the hotel premises.',
-  },
-  {
-    id: '5',
-    category: 'stay',
-    question: 'Do you offer airport transfer and shuttle services?',
-    answer: 'Yes, we provide luxury private airport transfers to and from Jakarta International Airport. You can reserve your private transfer while completing your online booking.',
-  },
-  {
-    id: '6',
-    category: 'policies',
-    question: 'What payment methods do you accept at check-in?',
-    answer: 'We accept major credit cards (Visa, MasterCard, American Express), debit cards, and cash. A refundable security deposit is required at check-in.',
-  },
-  {
-    id: '7',
-    category: 'amenities',
-    question: 'Are pets allowed at Waminna Hotel?',
-    answer: 'To ensure maximum comfort for all guests, only certified service animals are permitted inside room accommodations and public areas.',
-  },
-  {
-    id: '8',
-    category: 'policies',
-    question: 'What is the hotel policy on smoking?',
-    answer: 'Waminna Hotel is a 100% non-smoking establishment. Designated outdoor smoking areas are available on the ground terrace.',
-  },
-];
+import { Search, ChevronDown, HelpCircle, ShieldCheck, Clock, CreditCard } from 'lucide-react';
+import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 
 export default function FAQ() {
+  const { t } = useThemeLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({ '1': true });
+
+  const FAQ_ITEMS = [
+    {
+      id: '1',
+      category: 'booking',
+      question: t('What are the standard check-in and check-out times?', 'Berapakah waktu standar masuk dan keluar?'),
+      answer: t(
+        'Standard check-in begins at 3:00 PM, and check-out is by 12:00 PM (Noon). Guaranteed early check-in or late check-out options can be added during your booking process.',
+        'Waktu masuk standar dimulai pukul 15:00 WIB, dan waktu keluar pukul 12:00 WIB. Pilihan masuk lebih awal atau keluar lebih lambat dapat ditambahkan saat reservasi.'
+      ),
+    },
+    {
+      id: '2',
+      category: 'booking',
+      question: t('Can I cancel or modify my room reservation?', 'Apakah saya dapat membatalkan atau mengubah reservasi kamar saya?'),
+      answer: t(
+        'Yes! Free cancellation is allowed up to 48 hours prior to your scheduled check-in date. Cancellations within 48 hours are subject to a one-night room charge.',
+        'Ya! Pembatalan gratis diperbolehkan hingga 48 jam sebelum tanggal masuk yang dijadwalkan.'
+      ),
+    },
+    {
+      id: '4',
+      category: 'amenities',
+      question: t('Does Waminna Hotel offer free high-speed Wi-Fi?', 'Apakah Waminna Hotel menyediakan Wi-Fi cepat gratis?'),
+      answer: t(
+        'Complimentary high-speed fiber Wi-Fi is available across all guest rooms, suites, executive lounges, and public areas within the hotel premises.',
+        'Wi-Fi serat optik cepat gratis tersedia di semua kamar tamu, suite, lounge eksekutif, dan area publik.'
+      ),
+    },
+    {
+      id: '6',
+      category: 'policies',
+      question: t('What payment methods do you accept at check-in?', 'Metode pembayaran apa saja yang diterima saat check-in?'),
+      answer: t(
+        'We accept major credit cards (Visa, MasterCard, American Express), debit cards, QRIS, and cash.',
+        'Kami menerima kartu kredit utama (Visa, MasterCard, American Express), kartu debit, QRIS, dan tunai.'
+      ),
+    },
+  ];
 
   const toggleItem = (id: string) => {
     setOpenItems((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -79,32 +62,35 @@ export default function FAQ() {
   });
 
   return (
-    <div className="min-h-screen bg-warm-bg flex flex-col font-sans">
+    <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2] flex flex-col font-sans transition-colors">
       <Header />
 
       <main className="flex-1 pt-24 pb-16">
         {/* Header Banner */}
-        <div className="bg-[#1a1917] text-white py-16 px-4 sm:px-6 text-center">
+        <div className="bg-[#161d08] dark:bg-[#11110f] text-white py-16 px-4 sm:px-6 text-center">
           <div className="max-w-4xl mx-auto">
-            <span className="text-xs font-semibold text-brand uppercase tracking-widest bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
-              Help & Support Center
+            <span className="text-xs font-sans font-semibold uppercase tracking-widest text-[#C5A059] bg-[#C5A059]/10 px-3.5 py-1 rounded-full border border-[#C5A059]/20">
+              {t('Help & Support Center', 'Pusat Bantuan & Dukungan')}
             </span>
-            <h1 className="text-3xl sm:text-5xl font-serif mt-4 mb-4 font-normal tracking-tight">
-              Frequently Asked Questions
+            <h1 className="text-3xl sm:text-5xl font-display mt-4 mb-4 font-normal tracking-tight">
+              {t('Frequently Asked Questions', 'Pertanyaan Yang Sering Diajukan')}
             </h1>
             <p className="text-white/70 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
-              Find instant answers to common questions regarding reservations, hotel amenities, policies, and guest services.
+              {t(
+                'Find instant answers to common questions regarding reservations, hotel amenities, policies, and guest services.',
+                'Temukan jawaban cepat untuk pertanyaan umum mengenai reservasi, fasilitas hotel, kebijakan, dan layanan tamu.'
+              )}
             </p>
 
             {/* Search Input */}
             <div className="mt-8 max-w-xl mx-auto relative">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#827D75]" />
               <input
                 type="text"
-                placeholder="Search questions (e.g. breakfast, check-in, wifi)..."
+                placeholder={t('Search questions (e.g. breakfast, check-in, wifi)...', 'Cari pertanyaan (mis. sarapan, check-in, wifi)...')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white text-[#1a1917] text-sm focus:outline-none focus:ring-2 focus:ring-brand shadow-lg placeholder:text-gray-400"
+                className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white dark:bg-[#242320] text-[#1c1b19] dark:text-[#F7F5F2] text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059] shadow-lg border border-[#e8e6e1] dark:border-[#30312f]"
               />
             </div>
           </div>
@@ -114,11 +100,10 @@ export default function FAQ() {
           {/* Category Filter Tabs */}
           <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
             {[
-              { id: 'all', label: 'All Questions', icon: HelpCircle },
-              { id: 'booking', label: 'Reservations', icon: Clock },
-              { id: 'stay', label: 'Stay & Dining', icon: Sparkles },
-              { id: 'amenities', label: 'Amenities', icon: ShieldCheck },
-              { id: 'policies', label: 'Payments & Rules', icon: CreditCard },
+              { id: 'all', label: t('All Questions', 'Semua Pertanyaan'), icon: HelpCircle },
+              { id: 'booking', label: t('Reservations', 'Reservasi'), icon: Clock },
+              { id: 'amenities', label: t('Amenities', 'Fasilitas'), icon: ShieldCheck },
+              { id: 'policies', label: t('Payments & Rules', 'Pembayaran & Aturan'), icon: CreditCard },
             ].map((cat) => {
               const Icon = cat.icon;
               const active = selectedCategory === cat.id;
@@ -126,10 +111,10 @@ export default function FAQ() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-sans font-semibold transition-all ${
                     active
-                      ? 'bg-brand text-white shadow-sm'
-                      : 'bg-white text-[#5c5a54] hover:bg-warm-secondary border border-warm-border'
+                      ? 'bg-[#C5A059] text-[#1C1C19] shadow-sm'
+                      : 'bg-white dark:bg-[#242320] text-[#46483f] dark:text-[#ded9d6] border border-[#e8e6e1] dark:border-[#30312f]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -147,22 +132,22 @@ export default function FAQ() {
                 return (
                   <div
                     key={faq.id}
-                    className="bg-white rounded-xl border border-warm-border overflow-hidden transition-all shadow-sm"
+                    className="bg-white dark:bg-[#242320] rounded-xl border border-[#e8e6e1] dark:border-[#30312f] overflow-hidden transition-all shadow-sm"
                   >
                     <button
                       onClick={() => toggleItem(faq.id)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 font-medium text-[#1a1917] hover:bg-warm-secondary/40 transition-colors"
+                      className="w-full px-6 py-4 text-left flex items-center justify-between gap-4 font-medium text-[#1c1b19] dark:text-[#F7F5F2] transition-colors"
                     >
-                      <span className="text-base font-serif font-semibold">{faq.question}</span>
+                      <span className="text-base font-display font-normal">{faq.question}</span>
                       <ChevronDown
-                        className={`w-5 h-5 text-brand shrink-0 transition-transform duration-200 ${
+                        className={`w-5 h-5 text-[#C5A059] shrink-0 transition-transform duration-200 ${
                           isOpen ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
 
                     {isOpen && (
-                      <div className="px-6 pb-5 pt-1 text-sm text-[#5c5a54] leading-relaxed border-t border-warm-border/50">
+                      <div className="px-6 pb-5 pt-1 text-sm text-[#46483f] dark:text-[#ded9d6] leading-relaxed border-t border-[#e8e6e1]/50 dark:border-[#30312f]">
                         {faq.answer}
                       </div>
                     )}
@@ -170,11 +155,11 @@ export default function FAQ() {
                 );
               })
             ) : (
-              <div className="text-center py-12 bg-white rounded-xl border border-warm-border">
-                <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <h3 className="text-lg font-serif font-medium text-[#1a1917]">No questions found</h3>
-                <p className="text-xs text-[#8a8984] mt-1">
-                  Try adjusting your search keyword or selecting another category.
+              <div className="text-center py-12 bg-white dark:bg-[#242320] rounded-xl border border-[#e8e6e1] dark:border-[#30312f]">
+                <HelpCircle className="w-12 h-12 text-[#827D75] mx-auto mb-3" />
+                <h3 className="text-lg font-display text-[#1c1b19] dark:text-[#F7F5F2]">{t('No questions found', 'Tidak ada pertanyaan ditemukan')}</h3>
+                <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1 font-sans">
+                  {t('Try adjusting your search keyword or selecting another category.', 'Coba sesuaikan kata kunci pencarian Anda atau pilih kategori lain.')}
                 </p>
               </div>
             )}

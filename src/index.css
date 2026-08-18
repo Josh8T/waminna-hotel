@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,28 +13,28 @@
     --card-foreground: 30 8% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 30 8% 10%;
-    --primary: 181 80% 26%;
+    --primary: 80 20% 24%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 14% 94%;
-    --secondary-foreground: 30 8% 10%;
+    --secondary: 38 52% 31%;
+    --secondary-foreground: 0 0% 100%;
     --muted: 40 14% 94%;
     --muted-foreground: 38 6% 53%;
-    --accent: 181 80% 26%;
+    --accent: 40 50% 59%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 40 10% 90%;
     --input: 40 10% 90%;
-    --ring: 181 80% 26%;
+    --ring: 80 20% 24%;
     --radius: 0.625rem;
-    --sidebar-background: 40 14% 91%;
-    --sidebar-foreground: 38 6% 53%;
-    --sidebar-primary: 181 80% 26%;
+    --sidebar-background: 28 8% 9%;
+    --sidebar-foreground: 40 10% 90%;
+    --sidebar-primary: 80 20% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 52% 93%;
-    --sidebar-accent-foreground: 181 80% 26%;
-    --sidebar-border: 40 10% 90%;
-    --sidebar-ring: 181 80% 26%;
+    --sidebar-accent: 38 52% 31%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 28 8% 16%;
+    --sidebar-ring: 80 20% 24%;
   }
 
   * {
@@ -39,15 +42,15 @@
   }
 
   body {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    color: #1a1917;
-    background-color: #faf9f7;
+    font-family: 'Hanken Grotesk', 'DM Sans', system-ui, sans-serif;
+    color: #1c1b19;
+    background-color: #fbf9f6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4 {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Libre Caslon Text', 'DM Serif Display', Georgia, serif;
   }
 }
 

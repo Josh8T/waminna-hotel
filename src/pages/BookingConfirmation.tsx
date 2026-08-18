@@ -66,7 +66,7 @@ export default function BookingConfirmation() {
             Your Booking Reference
           </p>
           <div className="inline-block px-6 py-3 border-2 border-dashed border-brand/30 rounded-lg bg-brand-light/30">
-            <span className="font-mono text-xl font-medium text-brand tracking-wider">
+            <span className="font-sans text-xl font-bold text-brand tracking-wider">
               {booking.bookingReference}
             </span>
           </div>

@@ -111,16 +111,98 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blocked_dates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
--- Rooms, Addons, Reviews, Blocked Dates: Public Read
+-- Helper: check if the calling user has staff or owner role
+CREATE OR REPLACE FUNCTION public.is_staff_or_owner()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+      AND role IN ('staff', 'owner')
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Helper: check if the calling user is an owner
+CREATE OR REPLACE FUNCTION public.is_owner()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+      AND role = 'owner'
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- ---- Rooms: Public read, staff/owner write ----
 CREATE POLICY "Public Read Rooms" ON public.rooms FOR SELECT USING (true);
+CREATE POLICY "Staff Insert Rooms" ON public.rooms FOR INSERT
+  WITH CHECK (public.is_staff_or_owner());
+CREATE POLICY "Staff Update Rooms" ON public.rooms FOR UPDATE
+  USING (public.is_staff_or_owner());
+CREATE POLICY "Staff Delete Rooms" ON public.rooms FOR DELETE
+  USING (public.is_staff_or_owner());
+
+-- ---- Addons: Public read, owner write ----
 CREATE POLICY "Public Read Addons" ON public.addons FOR SELECT USING (true);
+CREATE POLICY "Owner Manage Addons" ON public.addons FOR ALL
+  USING (public.is_owner()) WITH CHECK (public.is_owner());
+
+-- ---- Reviews: Public read, authenticated insert ----
 CREATE POLICY "Public Read Reviews" ON public.reviews FOR SELECT USING (true);
+CREATE POLICY "Auth Insert Reviews" ON public.reviews FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Staff Delete Reviews" ON public.reviews FOR DELETE
+  USING (public.is_staff_or_owner());
+
+-- ---- Blocked Dates: Public read, staff write ----
 CREATE POLICY "Public Read Blocked Dates" ON public.blocked_dates FOR SELECT USING (true);
+CREATE POLICY "Staff Manage Blocked Dates" ON public.blocked_dates FOR ALL
+  USING (public.is_staff_or_owner()) WITH CHECK (public.is_staff_or_owner());
 
--- Bookings Policies: Anyone can create bookings, look up bookings by reference/email
+-- ---- Bookings: Anyone can book; users can see their own; staff see all ----
 CREATE POLICY "Public Insert Bookings" ON public.bookings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public Read Own Bookings" ON public.bookings FOR SELECT USING (true);
+CREATE POLICY "Read Own Bookings" ON public.bookings FOR SELECT
+  USING (
+    auth.uid() IS NULL -- allow lookup by reference for unauthenticated guests
+    OR auth.uid() = user_id
+    OR public.is_staff_or_owner()
+  );
+CREATE POLICY "Staff Update Bookings" ON public.bookings FOR UPDATE
+  USING (public.is_staff_or_owner());
 
--- Profiles Policies
-CREATE POLICY "Public Read Profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "User Update Own Profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- ---- Profiles: Users see own profile; staff see all ----
+CREATE POLICY "Read Own Profile" ON public.profiles FOR SELECT
+  USING (auth.uid() = id OR public.is_staff_or_owner());
+CREATE POLICY "User Insert Own Profile" ON public.profiles FOR INSERT
+  WITH CHECK (auth.uid() = id);
+CREATE POLICY "User Update Own Profile" ON public.profiles FOR UPDATE
+  USING (auth.uid() = id);
+CREATE POLICY "Owner Update Any Profile" ON public.profiles FOR UPDATE
+  USING (public.is_owner());
+
+-- ========================================================
+-- AUTO-PROFILE TRIGGER
+-- Creates a profiles row automatically when a user signs up via Supabase Auth.
+-- ========================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, first_name, last_name, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
+    COALESCE(
+      (NEW.raw_user_meta_data->>'role')::public.user_role,
+      'user'
+    )
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+

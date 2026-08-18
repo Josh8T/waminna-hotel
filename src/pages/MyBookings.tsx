@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, Users, ArrowRight, BedDouble } from 'lucide-react';
-import { getBookingsByUser, getRoomById, initializeData } from '@/lib/data';
+import { getBookingsByEmail, getRoomById, initializeData, getPhotoUrl } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/Header';
@@ -15,7 +15,7 @@ export default function MyBookings() {
   useEffect(() => {
     initializeData();
     if (user) {
-      const userBookings = getBookingsByUser(user.id);
+      const userBookings = getBookingsByEmail(user.email);
       setBookings(userBookings);
     }
   }, [user]);
@@ -88,9 +88,12 @@ export default function MyBookings() {
                 >
                   <div className="flex flex-col sm:flex-row gap-4">
                     <img
-                      src={room?.photos[0] || '/images/room-standard.jpg'}
+                      src={getPhotoUrl(room?.photos?.[0])}
                       alt={room?.name || 'Room'}
                       className="w-full sm:w-20 h-20 object-cover rounded-lg"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                      }}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
@@ -98,7 +101,7 @@ export default function MyBookings() {
                           <h3 className="font-semibold text-[#1a1917]">
                             {room?.name || `Room #${booking.roomId}`}
                           </h3>
-                          <p className="font-mono text-xs text-[#8a8984] mt-0.5">
+                          <p className="font-sans font-semibold text-xs text-[#8a8984] mt-0.5">
                             {booking.bookingReference}
                           </p>
                         </div>

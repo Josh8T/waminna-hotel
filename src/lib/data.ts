@@ -74,9 +74,8 @@ export interface BlockedDate {
 }
 
 export interface User {
-  id: number;
+  id: string;          // Supabase UUID
   email: string;
-  password: string;
   firstName: string;
   lastName: string;
   phone: string | null;
@@ -136,7 +135,7 @@ export const AMENITIES = [
   'Room Service',
   'Balcony',
   'City View',
-  'Garden View',
+  'Skyline View',
   'Pool View',
   'Bathtub',
   'Rain Shower',
@@ -162,18 +161,18 @@ export const BED_TYPE_LABELS: Record<BedType, string> = {
 const DEFAULT_ROOMS: Room[] = [
   {
     id: 1,
-    name: 'Garden Standard',
+    name: 'Urban Standard',
     roomNumber: '101',
     type: 'standard',
     capacity: 2,
     bedType: 'queen',
     pricePerNight: 89,
-    description: 'A cozy retreat overlooking our lush garden. The Garden Standard room offers everything you need for a comfortable stay, with warm natural light, soft linens, and a peaceful ambiance that makes you feel right at home.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Hair Dryer', 'Desk', 'Garden View'],
+    description: 'A cozy sanctuary in the heart of Batam. The Urban Standard room offers everything you need for a comfortable stay, with warm ambient lighting, soft linens, and a peaceful urban atmosphere.',
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Hair Dryer', 'Desk', 'City View'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/standard/standard.png`, `${import.meta.env.BASE_URL}images/rooms/standard/standard_2.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '24 m²',
-    view: 'Garden',
+    view: 'City',
   },
   {
     id: 2,
@@ -192,18 +191,18 @@ const DEFAULT_ROOMS: Room[] = [
   },
   {
     id: 3,
-    name: 'Garden Deluxe',
+    name: 'Executive Deluxe',
     roomNumber: '201',
     type: 'deluxe',
     capacity: 2,
     bedType: 'king',
     pricePerNight: 129,
-    description: 'Step up to the Garden Deluxe for an elevated experience. Featuring a plush king bed, premium linens, and a private balcony with garden views, this room blends comfort with a touch of luxury for a truly memorable stay.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'Garden View'],
+    description: 'Step up to the Executive Deluxe for an elevated experience. Featuring a plush king bed, premium linens, and a private balcony with cityscape views, this room blends comfort with modern urban luxury.',
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'City View'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe.png`, `${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe_2.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '32 m²',
-    view: 'Garden',
+    view: 'City',
   },
   {
     id: 4,
@@ -222,18 +221,18 @@ const DEFAULT_ROOMS: Room[] = [
   },
   {
     id: 5,
-    name: 'Garden Suite',
+    name: 'Skyline Suite',
     roomNumber: '301',
     type: 'suite',
     capacity: 4,
     bedType: 'king',
     pricePerNight: 199,
-    description: 'The Garden Suite is our signature accommodation, featuring a separate living area, king bedroom, and panoramic garden views. Perfect for families or extended stays, with all the comforts of home and the luxury of a boutique hotel.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'Garden View', 'Bathtub', 'Iron & Board'],
+    description: 'The Skyline Suite is our signature accommodation, featuring a separate living area, king bedroom, and panoramic skyline views. Perfect for families or extended stays, with all the comforts of home and boutique hotel luxury.',
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'Skyline View', 'Bathtub', 'Iron & Board'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/suite/suite.jpg`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '52 m²',
-    view: 'Garden',
+    view: 'Skyline',
   },
   {
     id: 6,
@@ -251,6 +250,27 @@ const DEFAULT_ROOMS: Room[] = [
     view: 'Panoramic',
   },
 ];
+
+// ====== IMAGE HELPERS ======
+
+export function getPhotoUrl(url?: string): string {
+  const fallback = `${import.meta.env.BASE_URL}images/room-deluxe.jpg`;
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  const cleanUrl = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+
+  const baseWithoutSlash = cleanBase.startsWith('/') ? cleanBase.slice(1) : cleanBase;
+  if (baseWithoutSlash && cleanUrl.startsWith(baseWithoutSlash)) {
+    return `/${cleanUrl}`;
+  }
+
+  return `${cleanBase}${cleanUrl}`;
+}
 
 // ====== STORAGE HELPERS ======
 
@@ -284,30 +304,24 @@ export function initializeData(): void {
   setItem(STORAGE_KEYS.rooms, DEFAULT_ROOMS);
   setItem(STORAGE_KEYS.bookings, []);
   setItem(STORAGE_KEYS.blockedDates, []);
-  setItem(STORAGE_KEYS.users, [
-    {
-      id: 1,
-      email: 'admin@charlesstay.com',
-      password: 'admin123',
-      firstName: 'Charles',
-      lastName: 'Admin',
-      phone: '+62 812 3456 7890',
-      role: 'owner',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      email: 'staff@charlesstay.com',
-      password: 'staff123',
-      firstName: 'Staff',
-      lastName: 'Member',
-      phone: '+62 813 4567 8901',
-      role: 'staff',
-      createdAt: new Date().toISOString(),
-    },
-  ]);
-  setItem(STORAGE_KEYS.currentUser, null);
+  // NOTE: User accounts are managed via Supabase Auth — not stored in localStorage.
   setItem(STORAGE_KEYS.initialized, true);
+}
+
+import {
+  fetchRoomsFromSupabase,
+  insertRoomToSupabase,
+  updateRoomInSupabase,
+  deleteRoomFromSupabase,
+} from './supabase';
+
+export async function syncRoomsWithSupabase(): Promise<Room[]> {
+  const sbRooms = await fetchRoomsFromSupabase();
+  if (sbRooms && sbRooms.length > 0) {
+    setItem(STORAGE_KEYS.rooms, sbRooms);
+    return sbRooms;
+  }
+  return getRooms();
 }
 
 // ====== ROOM CRUD ======
@@ -347,6 +361,10 @@ export function updateRoom(id: number, updates: Partial<Room>): Room | null {
   if (idx === -1) return null;
   rooms[idx] = { ...rooms[idx], ...updates };
   setItem(STORAGE_KEYS.rooms, rooms);
+
+  // Async sync to Supabase Database
+  updateRoomInSupabase(id, rooms[idx]).catch((err) => console.warn('Supabase update notice:', err));
+
   return rooms[idx];
 }
 
@@ -355,6 +373,19 @@ export function createRoom(room: Omit<Room, 'id'>): Room {
   const newRoom = { ...room, id: Math.max(0, ...rooms.map((r) => r.id)) + 1 };
   rooms.push(newRoom);
   setItem(STORAGE_KEYS.rooms, rooms);
+
+  // Async sync to Supabase Database
+  insertRoomToSupabase(newRoom).then((sbCreated) => {
+    if (sbCreated && sbCreated.id) {
+      const currentRooms = getRooms();
+      const index = currentRooms.findIndex((r) => r.roomNumber === newRoom.roomNumber);
+      if (index !== -1) {
+        currentRooms[index].id = sbCreated.id;
+        setItem(STORAGE_KEYS.rooms, currentRooms);
+      }
+    }
+  }).catch((err) => console.warn('Supabase create room notice:', err));
+
   return newRoom;
 }
 
@@ -363,6 +394,10 @@ export function deleteRoom(id: number): boolean {
   const filtered = rooms.filter((r) => r.id !== id);
   if (filtered.length === rooms.length) return false;
   setItem(STORAGE_KEYS.rooms, filtered);
+
+  // Async sync to Supabase Database
+  deleteRoomFromSupabase(id).catch((err) => console.warn('Supabase delete notice:', err));
+
   return true;
 }
 
@@ -411,6 +446,14 @@ export function getBookingByReference(ref: string): Booking | undefined {
 
 export function getBookingsByUser(userId: number): Booking[] {
   return getBookings().filter((b) => b.userId === userId);
+}
+
+export function getBookingsByEmail(email: string): Booking[] {
+  if (!email) return [];
+  const normalized = email.trim().toLowerCase();
+  return getBookings().filter(
+    (b) => b.guestEmail?.trim().toLowerCase() === normalized
+  );
 }
 
 export function createBooking(data: {
@@ -496,65 +539,8 @@ export function updateBookingStatus(id: number, status: BookingStatus): Booking 
 }
 
 // ====== AUTH ======
-
-export function getUsers(): User[] {
-  return getItem<User[]>(STORAGE_KEYS.users, []);
-}
-
-export function registerUser(data: {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-}): User {
-  const users = getUsers();
-  if (users.some((u) => u.email === data.email)) {
-    throw new Error('Email already registered');
-  }
-
-  const user: User = {
-    id: Math.max(0, ...users.map((u) => u.id)) + 1,
-    email: data.email,
-    password: data.password,
-    firstName: data.firstName,
-    lastName: data.lastName,
-    phone: data.phone ?? null,
-    role: 'user',
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(user);
-  setItem(STORAGE_KEYS.users, users);
-  return user;
-}
-
-export function loginUser(email: string, password: string): User | null {
-  const users = getUsers();
-  const user = users.find((u) => u.email === email && u.password === password);
-  if (user) {
-    setItem(STORAGE_KEYS.currentUser, user);
-    return user;
-  }
-  return null;
-}
-
-export function logoutUser(): void {
-  setItem(STORAGE_KEYS.currentUser, null);
-}
-
-export function getCurrentUser(): User | null {
-  return getItem<User | null>(STORAGE_KEYS.currentUser, null);
-}
-
-export function updateUserRole(id: number, role: UserRole): User | null {
-  const users = getUsers();
-  const idx = users.findIndex((u) => u.id === id);
-  if (idx === -1) return null;
-  users[idx] = { ...users[idx], role };
-  setItem(STORAGE_KEYS.users, users);
-  return users[idx];
-}
+// Authentication is handled by Supabase Auth (src/lib/supabase.ts + src/hooks/useAuth.tsx).
+// User management (role changes) is done via the Supabase Dashboard → profiles table.
 
 // ====== STATS ======
 

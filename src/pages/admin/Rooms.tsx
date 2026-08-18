@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { getRooms, updateRoom, createRoom, deleteRoom, initializeData } from '@/lib/data';
+import { getRooms, updateRoom, createRoom, deleteRoom, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType, RoomStatus } from '@/lib/data';
 import AdminLayout from '@/components/AdminLayout';
+import ImageUploader from '@/components/ImageUploader';
 
 const AMENITIES_LIST = [
   'Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe',
-  'Hair Dryer', 'Room Service', 'Balcony', 'City View', 'Garden View',
+  'Hair Dryer', 'Room Service', 'Balcony', 'City View', 'Skyline View',
   'Pool View', 'Bathtub', 'Rain Shower', 'Coffee Machine', 'Iron & Board', 'Desk',
 ];
 
@@ -19,10 +20,10 @@ const emptyRoom: Partial<Room> = {
   pricePerNight: 100,
   description: '',
   amenities: [],
-  photos: ['/images/room-standard.jpg'],
+  photos: ['images/rooms/standard/standard.png'],
   status: 'available',
-  size: '',
-  view: '',
+  size: '25 m²',
+  view: 'City View',
 };
 
 export default function AdminRooms() {
@@ -34,6 +35,11 @@ export default function AdminRooms() {
   useEffect(() => {
     initializeData();
     setRooms(getRooms());
+    syncRoomsWithSupabase().then((latestRooms) => {
+      if (latestRooms && latestRooms.length > 0) {
+        setRooms([...latestRooms]);
+      }
+    });
   }, []);
 
   const openCreate = () => {
@@ -50,10 +56,16 @@ export default function AdminRooms() {
 
   const handleSave = () => {
     if (!form.name || !form.roomNumber || !form.pricePerNight) return;
+    const roomPayload = {
+      ...form,
+      photos: form.photos && form.photos.length > 0 && form.photos[0].trim() !== ''
+        ? form.photos
+        : ['images/rooms/standard/standard.png'],
+    };
     if (editing) {
-      updateRoom(editing.id, form);
+      updateRoom(editing.id, roomPayload);
     } else {
-      createRoom(form as Omit<Room, 'id'>);
+      createRoom(roomPayload as Omit<Room, 'id'>);
     }
     setRooms(getRooms());
     setShowModal(false);
@@ -93,9 +105,16 @@ export default function AdminRooms() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rooms.map((room) => (
-          <div key={room.id} className="bg-white rounded-lg border border-warm-border overflow-hidden shadow-sm">
-            <div className="aspect-[16/10] overflow-hidden">
-              <img src={room.photos[0]} alt={room.name} className="w-full h-full object-cover" />
+          <div key={room.id} className="bg-white rounded-lg border border-warm-border overflow-hidden shadow-sm flex flex-col justify-between">
+            <div className="aspect-[16/10] overflow-hidden bg-gray-100">
+              <img
+                src={getPhotoUrl(room.photos?.[0])}
+                alt={room.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                }}
+              />
             </div>
             <div className="p-4">
               <div className="flex items-start justify-between mb-2">
@@ -233,6 +252,10 @@ export default function AdminRooms() {
                     </select>
                   </div>
                 </div>
+                <ImageUploader
+                  photos={form.photos || []}
+                  onChange={(newPhotos) => updateField('photos', newPhotos)}
+                />
                 <div>
                   <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">Description</label>
                   <textarea

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
-import { getRoomById, createBooking, HOTEL_ADDONS } from '@/lib/data';
+import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
 import Header from '@/components/Header';
 
 export default function BookingFlow() {
@@ -105,57 +105,39 @@ export default function BookingFlow() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
-  const steps = [
-    { num: 1, label: 'Dates', icon: Calendar },
-    { num: 2, label: 'Details', icon: Users },
-    { num: 3, label: 'Confirm', icon: CreditCard },
-  ];
-
   return (
-    <div className="min-h-screen bg-warm-bg">
+    <div className="min-h-screen bg-[#fdf8f5]">
       <Header />
 
-      {/* Step Indicator */}
-      <div className="pt-16 bg-warm-secondary border-b border-warm-border">
-        <div className="max-w-2xl mx-auto px-4 py-5">
-          <div className="flex items-center justify-center gap-0">
-            {steps.map((s, i) => (
-              <div key={s.num} className="flex items-center">
-                <div className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium font-mono ${
-                      step >= s.num
-                        ? step > s.num
-                          ? 'bg-green-50 text-green-700 border border-green-300'
-                          : 'bg-brand-light text-brand border border-brand'
-                        : 'bg-warm-tertiary text-[#8a8984] border border-warm-border'
-                    }`}
-                  >
-                    {step > s.num ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      s.num
-                    )}
-                  </div>
-                  <span
-                    className={`text-[11px] font-medium ${
-                      step >= s.num ? (step > s.num ? 'text-green-700' : 'text-brand') : 'text-[#8a8984]'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < steps.length - 1 && (
-                  <div
-                    className={`w-12 sm:w-16 h-0.5 mx-2 mb-5 ${
-                      step > s.num ? 'bg-green-400' : 'bg-warm-border'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
+      {/* Progress Header */}
+      <div className="pt-20 pb-8 bg-[#f2ede9] border-b border-[#e8e6e1]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#414930] hover:text-[#586146] uppercase tracking-wider mb-4"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold tracking-widest uppercase text-[#785927] font-sans">
+                Reservation Checkout
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-display font-normal text-[#1c1b19]">
+                {step === 1 ? 'Review Room & Options' : 'Guest Information & Payment'}
+              </h1>
+            </div>
+            
+            {/* Step Indicator */}
+            <div className="hidden sm:flex items-center gap-3 font-sans font-semibold text-xs">
+              <span className={`px-3 py-1 rounded-full border ${step === 1 ? 'bg-[#414930] text-white border-[#414930]' : 'bg-white text-[#76786e] border-[#e8e6e1]'}`}>
+                1. Review & Add-ons
+              </span>
+              <span className={`px-3 py-1 rounded-full border ${step === 2 ? 'bg-[#414930] text-white border-[#414930]' : 'bg-white text-[#76786e] border-[#e8e6e1]'}`}>
+                2. Guest & Payment
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -386,7 +368,14 @@ export default function BookingFlow() {
               Booking Summary
             </h3>
             <div className="flex gap-3 mb-4">
-              <img src={room.photos[0]} alt={room.name} className="w-16 h-14 object-cover rounded-md" />
+              <img
+                src={getPhotoUrl(room.photos?.[0])}
+                alt={room.name}
+                className="w-16 h-14 object-cover rounded-md"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                }}
+              />
               <div>
                 <p className="text-sm font-medium text-[#1a1917]">{room.name}</p>
                 <p className="text-xs text-[#8a8984]">{nights} night{nights > 1 ? 's' : ''}</p>

@@ -1,44 +1,117 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { User, UserRole } from '@/lib/data';
-import { getCurrentUser, loginUser, logoutUser, registerUser } from '@/lib/data';
+import type { UserRole } from '@/lib/data';
+import { supabase, getProfile, createProfile, type AuthUser } from '@/lib/supabase';
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const current = getCurrentUser();
-    setUser(current);
-    setIsLoading(false);
+    // 1. Load existing session on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await getProfile(session.user.id);
+        setUser(profile);
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    // 2. Listen for auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const profile = await getProfile(session.user.id);
+          setUser(profile);
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const result = loginUser(email, password);
-    if (result) {
-      setUser(result);
-      return true;
+  const login = useCallback(async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        // Return generic message — don't expose whether email or password is wrong
+        return { success: false, error: 'Invalid email or password.' };
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Unable to connect. Please try again.' };
     }
-    return false;
   }, []);
 
-  const register = useCallback(async (data: { email: string; password: string; firstName: string; lastName: string; phone?: string }) => {
-    const newUser = registerUser(data);
-    setUser(newUser);
+  const register = useCallback(async (data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes('already registered')) {
+          return { success: false, error: 'An account with this email already exists.' };
+        }
+        return { success: false, error: 'Registration failed. Please try again.' };
+      }
+
+      // Create profile manually in case the DB trigger isn't set up yet
+      if (authData.user) {
+        await createProfile(
+          authData.user.id,
+          data.email,
+          data.firstName,
+          data.lastName,
+          data.phone
+        );
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Unable to connect. Please try again.' };
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    logoutUser();
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
   }, []);
 

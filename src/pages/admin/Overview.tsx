@@ -132,7 +132,7 @@ export default function AdminOverview() {
             return (
               <div
                 key={r.num}
-                className={`h-12 rounded-md flex items-center justify-center text-sm font-medium font-mono border ${cfg.bg} ${cfg.text} ${cfg.border}`}
+                className={`h-12 rounded-md flex items-center justify-center text-sm font-sans font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
               >
                 {r.num}
               </div>
