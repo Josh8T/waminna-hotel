@@ -36,18 +36,36 @@ export async function getProfile(userId: string): Promise<AuthUser | null> {
       .select('id, email, first_name, last_name, phone, role')
       .eq('id', userId)
       .single();
-    if (error || !data) return null;
-    return {
-      id: data.id,
-      email: data.email,
-      firstName: data.first_name || '',
-      lastName: data.last_name || '',
-      phone: data.phone ?? null,
-      role: (data.role as UserRole) || 'user',
-    };
-  } catch {
-    return null;
+    if (!error && data) {
+      return {
+        id: data.id,
+        email: data.email,
+        firstName: data.first_name || '',
+        lastName: data.last_name || '',
+        phone: data.phone ?? null,
+        role: (data.role as UserRole) || 'user',
+      };
+    }
+  } catch (e) {
+    console.warn('Profile fetch warning:', e);
   }
+
+  // Fallback to current authenticated user session data if profiles table query fails
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user && session.user.id === userId) {
+      return {
+        id: session.user.id,
+        email: session.user.email || '',
+        firstName: session.user.user_metadata?.first_name || '',
+        lastName: session.user.user_metadata?.last_name || '',
+        phone: session.user.user_metadata?.phone ?? null,
+        role: (session.user.user_metadata?.role as UserRole) || 'user',
+      };
+    }
+  } catch {}
+
+  return null;
 }
 
 export async function createProfile(

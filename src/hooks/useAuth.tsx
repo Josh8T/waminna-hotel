@@ -90,7 +90,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error.message.toLowerCase().includes('already registered')) {
           return { success: false, error: 'An account with this email already exists.' };
         }
-        return { success: false, error: 'Registration failed. Please try again.' };
+        if (error.message.toLowerCase().includes('rate limit')) {
+          return {
+            success: false,
+            error: 'Email rate limit exceeded. Please disable "Confirm email" in Supabase Auth settings to allow instant signups.',
+          };
+        }
+        return { success: false, error: error.message || 'Registration failed. Please try again.' };
       }
 
       // Create profile manually in case the DB trigger isn't set up yet
@@ -105,8 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       return { success: true };
-    } catch {
-      return { success: false, error: 'Unable to connect. Please try again.' };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Unable to connect. Please try again.' };
     }
   }, []);
 
