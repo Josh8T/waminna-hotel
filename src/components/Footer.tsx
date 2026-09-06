@@ -56,11 +56,15 @@ export default function Footer() {
           {/* Contact */}
           <div>
             <h4 className="text-xs font-medium tracking-widest uppercase text-white/40 mb-4">
-              {t('Get in Touch', 'Hubungi Kunci')}
+              {t('Get in Touch', 'Hubungi Kami')}
             </h4>
             <div className="flex flex-col gap-2">
-              <span className="text-sm text-white/60">info@waminnahotel.com</span>
-              <span className="text-sm text-white/60">+62 21 5555 8888</span>
+              <a href="mailto:info@waminnahotel.com" className="text-sm text-white/60 hover:text-white transition-colors">info@waminnahotel.com</a>
+              <a href="mailto:reservation@waminnahotel.com" className="text-sm text-white/60 hover:text-white transition-colors">reservation@waminnahotel.com</a>
+              <a href="https://wa.me/6282227891010" target="_blank" rel="noreferrer" className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1.5">
+                <span>+62 822 2789 1010</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">WhatsApp</span>
+              </a>
             </div>
           </div>
         </div>
