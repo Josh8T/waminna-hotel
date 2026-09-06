@@ -52,15 +52,17 @@ export default function Header() {
         </button>
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center">
           <img
-            src={`${import.meta.env.BASE_URL}images/stitch/waminna_emblem.png`}
-            alt="Waminna Hotel Logo"
-            className="h-9 w-auto object-contain transition-transform hover:scale-105"
+            src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_black.png`}
+            alt="Waminna Hotel"
+            className="h-8 sm:h-9 w-auto object-contain dark:hidden transition-transform hover:scale-105"
           />
-          <span className="font-display font-normal text-xl tracking-normal text-[#1c1b19] dark:text-[#F7F5F2] hidden sm:inline-block">
-            Waminna Hotel
-          </span>
+          <img
+            src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
+            alt="Waminna Hotel"
+            className="h-8 sm:h-9 w-auto object-contain hidden dark:block transition-transform hover:scale-105"
+          />
         </Link>
 
         {/* Desktop nav */}
@@ -190,15 +192,17 @@ export default function Header() {
             <div>
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-5 border-b border-[#e8e6e1] dark:border-[#30312f]">
-                <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3">
+                <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center">
                   <img
-                    src={`${import.meta.env.BASE_URL}images/stitch/waminna_nobg.png`}
-                    alt="Waminna Hotel Logo"
-                    className="h-9 w-auto object-contain"
+                    src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_black.png`}
+                    alt="Waminna Hotel"
+                    className="h-8 w-auto object-contain dark:hidden"
                   />
-                  <span className="font-display font-normal text-lg text-[#1c1b19] dark:text-[#F7F5F2]">
-                    Waminna Hotel
-                  </span>
+                  <img
+                    src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
+                    alt="Waminna Hotel"
+                    className="h-8 w-auto object-contain hidden dark:block"
+                  />
                 </Link>
                 <button
                   className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#46483f] dark:text-[#F7F5F2] transition-colors"

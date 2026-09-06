@@ -400,7 +400,7 @@ export default function BookingFlow() {
                 <Shield className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-[#1a1917]">Cancellation Policy</p>
-                  <p className="text-[11px] text-[#8a8984]">Free cancellation up to 3 days before check-in</p>
+                  <p className="text-[11px] text-[#8a8984]">All confirmed bookings are non-cancellable and non-refundable</p>
                 </div>
               </div>
             </div>

@@ -116,6 +116,12 @@ export default function Contact() {
                       {t('General', 'Umum')}: <a href="mailto:info@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">info@waminnahotel.com</a><br />
                       {t('Reservations', 'Reservasi')}: <a href="mailto:reservation@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">reservation@waminnahotel.com</a>
                     </p>
+                    <p className="text-[11px] text-[#827D75]/80 dark:text-[#ded9d6]/70 mt-1.5 italic">
+                      {t(
+                        'Note: Emails from reservation@waminnahotel.com are automated.',
+                        'Catatan: Email dari reservation@waminnahotel.com dikirim otomatis.'
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -124,10 +130,11 @@ export default function Contact() {
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Check-in / Check-out', 'Masuk / Keluar')}</h3>
+                    <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Check-in & Reception', 'Masuk & Resepsionis')}</h3>
                     <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1">
-                      {t('Check-in: 3:00 PM onwards', 'Masuk: Mulai pukul 15:00 WIB')}<br />
-                      {t('Check-out: 12:00 PM (Noon)', 'Keluar: Pukul 12:00 WIB (Siang)')}
+                      {t('Check-in: From 2:00 PM', 'Masuk: Mulai pukul 14:00 WIB')}<br />
+                      {t('Check-out: By 12:00 noon', 'Keluar: Maksimal pukul 12:00 WIB (Siang)')}<br />
+                      <span className="text-[#C5A059] font-medium">{t('Reception Desk: 24 Hours', 'Meja Resepsionis: 24 Jam')}</span>
                     </p>
                   </div>
                 </div>

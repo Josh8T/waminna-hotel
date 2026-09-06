@@ -10,8 +10,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={`${import.meta.env.BASE_URL}images/stitch/waminna_emblem.png`} alt="Waminna Emblem" className="h-10 w-auto" />
+            <div className="flex items-center mb-4">
+              <img
+                src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
+                alt="Waminna Hotel"
+                className="h-10 w-auto object-contain"
+              />
             </div>
             <p className="text-sm text-white/70 leading-relaxed font-sans">
               Jl. Komp. Penuin Centre, Block JA No. 7-10, Batu Selicin, Lubuk Baja, Batam 29432, Indonesia<br />
