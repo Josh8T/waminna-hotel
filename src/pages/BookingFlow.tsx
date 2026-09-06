@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
+import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, AlertTriangle } from 'lucide-react';
 import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
+import { validateStayDates } from '@/lib/dateUtils';
 import Header from '@/components/Header';
+import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 
 export default function BookingFlow() {
+  const { t } = useThemeLanguage();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roomId = parseInt(searchParams.get('roomId') || '0');
@@ -28,11 +31,8 @@ export default function BookingFlow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const room = getRoomById(roomId);
-  const nights = (() => {
-    if (!checkIn || !checkOut) return 0;
-    const s = new Date(checkIn), e = new Date(checkOut);
-    return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
-  })();
+  const dateValidation = validateStayDates(checkIn, checkOut);
+  const nights = dateValidation.isValid ? dateValidation.nights : 0;
 
   const addonTotal = selectedAddons.reduce((acc, id) => {
     const addon = HOTEL_ADDONS.find((a) => a.id === id);
@@ -44,13 +44,39 @@ export default function BookingFlow() {
   const tax = (subtotal + addonTotal) * 0.1;
   const total = subtotal + addonTotal + tax;
 
-  if (!room || !checkIn || !checkOut) {
+  if (!room || !checkIn || !checkOut || !dateValidation.isValid) {
+    const errorMsg = dateValidation.isValid
+      ? t('Invalid room or booking parameters.', 'Kamar atau parameter pemesanan tidak valid.')
+      : t(dateValidation.messageEn, dateValidation.messageId);
+
     return (
-      <div className="min-h-screen bg-warm-bg pt-24 text-center">
-        <p className="text-lg text-[#5c5a54]">Invalid booking parameters</p>
-        <button onClick={() => navigate('/rooms')} className="text-brand hover:underline mt-2">
-          Browse rooms
-        </button>
+      <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2]">
+        <Header />
+        <div className="pt-28 pb-16 px-4 flex justify-center items-center">
+          <div className="max-w-md w-full bg-white dark:bg-[#242320] rounded-xl border border-amber-300 dark:border-amber-800/60 p-6 text-center shadow-lg">
+            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+            <h2 className="text-xl font-display font-semibold mb-2 text-[#1c1b19] dark:text-[#F7F5F2]">
+              {t('Invalid Stay Dates', 'Tanggal Menginap Tidak Valid')}
+            </h2>
+            <p className="text-sm text-[#827D75] dark:text-[#ded9d6] mb-6">
+              {errorMsg}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => navigate(room ? `/rooms/${room.id}` : '/rooms')}
+                className="px-5 py-2.5 bg-[#C5A059] hover:bg-[#b08d49] text-[#1C1C19] font-medium text-xs uppercase tracking-wider rounded transition-colors"
+              >
+                {t('Select Valid Dates', 'Pilih Tanggal yang Valid')}
+              </button>
+              <button
+                onClick={() => navigate('/rooms')}
+                className="px-5 py-2.5 border border-[#827D75]/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs uppercase tracking-wider rounded transition-colors"
+              >
+                {t('Browse Catalog', 'Lihat Katalog')}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -79,6 +105,12 @@ export default function BookingFlow() {
   };
 
   const handleSubmit = async () => {
+    const validation = validateStayDates(checkIn, checkOut);
+    if (!validation.isValid) {
+      setErrors({ submit: t(validation.messageEn, validation.messageId) });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const booking = createBooking({
@@ -93,7 +125,7 @@ export default function BookingFlow() {
         specialRequests: formData.specialRequests || undefined,
       });
       navigate(`/booking-confirmation?ref=${booking.bookingReference}`);
-    } catch (err) {
+    } catch {
       setErrors({ submit: 'Failed to create booking. Please try again.' });
     } finally {
       setIsSubmitting(false);

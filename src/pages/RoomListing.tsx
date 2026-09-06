@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import { getRooms, getAvailableRooms, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType } from '@/lib/data';
+import { getTodayString, getTomorrowString, validateStayDates, formatDateRange } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -25,6 +27,16 @@ export default function RoomListing() {
   const [maxPrice, setMaxPrice] = useState('');
   const [, setRefreshKey] = useState(0);
 
+  const today = getTodayString();
+  const minCheckOut = checkIn ? getTomorrowString(checkIn) : getTomorrowString();
+
+  const dateValidation = useMemo(() => {
+    if (!checkIn && !checkOut) return null;
+    return validateStayDates(checkIn, checkOut);
+  }, [checkIn, checkOut]);
+
+  const nights = dateValidation?.isValid ? dateValidation.nights : 0;
+
   useEffect(() => {
     initializeData();
     syncRoomsWithSupabase().then(() => {
@@ -32,9 +44,41 @@ export default function RoomListing() {
     });
   }, []);
 
+  // Validate and sanitize URL date parameters if present
+  useEffect(() => {
+    if (checkIn || checkOut) {
+      const validation = validateStayDates(checkIn, checkOut);
+      if (!validation.isValid) {
+        toast.warning(
+          t(
+            'Invalid stay dates. Please choose valid check-in and check-out dates (minimum 1 night).',
+            'Tanggal menginap tidak valid. Harap pilih tanggal masuk dan keluar yang valid (minimal 1 malam).'
+          )
+        );
+        // If checkIn exists and checkOut is same-day or missing, auto-adjust checkOut
+        if (checkIn && (!checkOut || checkOut <= checkIn)) {
+          const next = new URLSearchParams(searchParams);
+          next.set('checkOut', getTomorrowString(checkIn));
+          setSearchParams(next, { replace: true });
+        }
+      }
+    }
+  }, [checkIn, checkOut]);
+
+  const handleDatesUpdate = (newCheckIn: string, newCheckOut: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (newCheckIn) next.set('checkIn', newCheckIn);
+    else next.delete('checkIn');
+
+    if (newCheckOut) next.set('checkOut', newCheckOut);
+    else next.delete('checkOut');
+
+    setSearchParams(next);
+  };
+
   const rooms = useMemo(() => {
     let result: Room[];
-    if (checkIn && checkOut) {
+    if (checkIn && checkOut && dateValidation?.isValid) {
       result = getAvailableRooms(checkIn, checkOut, guests ? parseInt(guests) : undefined);
     } else {
       result = getRooms();
@@ -71,7 +115,7 @@ export default function RoomListing() {
     }
 
     return result;
-  }, [checkIn, checkOut, guests, selectedTypes, selectedBeds, minPrice, maxPrice, sortBy]);
+  }, [checkIn, checkOut, dateValidation?.isValid, guests, selectedTypes, selectedBeds, minPrice, maxPrice, sortBy]);
 
   const toggleType = (type: RoomType) => {
     setSelectedTypes((prev) =>
@@ -109,9 +153,9 @@ export default function RoomListing() {
             {t('Rooms & Sanctuary Suites', 'Kamar & Suite Suaka')}
           </h1>
           <div className="flex flex-wrap items-center gap-3">
-            {checkIn && checkOut && (
+            {checkIn && checkOut && dateValidation?.isValid && (
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white dark:bg-[#191816] rounded-full text-xs font-sans text-[#414930] dark:text-[#C5A059] border border-[#e8e6e1] dark:border-[#30312f]">
-                {`${new Date(checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(checkOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                {formatDateRange(checkIn, checkOut)}
               </span>
             )}
             {guests && (
@@ -164,6 +208,73 @@ export default function RoomListing() {
                   {t('Reset', 'Atur Ulang')}
                 </button>
               )}
+            </div>
+
+            {/* Stay Dates Filter */}
+            <div className="mb-5 pb-5 border-b border-[#e8e6e1] dark:border-[#30312f]">
+              <div className="flex items-center justify-between mb-2.5">
+                <h4 className="text-[11px] font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] font-sans">
+                  {t('Stay Dates', 'Tanggal Menginap')}
+                </h4>
+                {nights > 0 && (
+                  <span className="text-[10px] font-semibold text-[#C5A059] px-1.5 py-0.5 bg-[#C5A059]/15 rounded">
+                    {nights} {nights === 1 ? t('night', 'malam') : t('nights', 'malam')}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-[10px] uppercase font-sans text-[#827D75] dark:text-[#ded9d6] mb-1">
+                    {t('Check In', 'Masuk')}
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#827D75] dark:text-[#C5A059]" />
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val && checkOut && checkOut <= val) {
+                          handleDatesUpdate(val, getTomorrowString(val));
+                        } else {
+                          handleDatesUpdate(val, checkOut);
+                        }
+                      }}
+                      min={today}
+                      className="w-full pl-7 pr-2 py-1.5 text-xs rounded border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-sans text-[#827D75] dark:text-[#ded9d6] mb-1">
+                    {t('Check Out', 'Keluar')}
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#827D75] dark:text-[#C5A059]" />
+                    <input
+                      type="date"
+                      value={checkOut}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (checkIn && val <= checkIn) {
+                          toast.warning(
+                            t(
+                              'Same-day check-out is not allowed. Check-out must be after check-in.',
+                              'Check-out di hari yang sama tidak diperbolehkan. Tanggal keluar harus setelah tanggal masuk.'
+                            )
+                          );
+                          handleDatesUpdate(checkIn, getTomorrowString(checkIn));
+                          return;
+                        }
+                        handleDatesUpdate(checkIn, val);
+                      }}
+                      min={minCheckOut}
+                      className="w-full pl-7 pr-2 py-1.5 text-xs rounded border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Room Type */}
@@ -258,49 +369,59 @@ export default function RoomListing() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {rooms.map((room) => (
-                <div
-                  key={room.id}
-                  className="flex flex-col sm:flex-row bg-white dark:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="sm:w-44 sm:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-36 overflow-hidden">
-                    <img
-                      src={getPhotoUrl(room.photos?.[0])}
-                      alt={room.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 p-4 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2] mb-1 font-display">{room.name}</h3>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        <span className="px-2 py-0.5 bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] text-[11px] font-sans font-semibold rounded-full capitalize">
-                          {room.type}
-                        </span>
-                        <span className="px-2 py-0.5 bg-[#f5f3f0] dark:bg-[#191816] text-[#46483f] dark:text-[#ded9d6] text-[11px] font-sans font-medium rounded-full">
-                          {room.capacity} {t('guests', 'tamu')}
+              {rooms.map((room) => {
+                const params = new URLSearchParams();
+                if (checkIn && checkOut && dateValidation?.isValid) {
+                  params.set('checkIn', checkIn);
+                  params.set('checkOut', checkOut);
+                }
+                if (guests) {
+                  params.set('guests', guests);
+                }
+                const queryString = params.toString();
+                const roomUrl = `/rooms/${room.id}${queryString ? `?${queryString}` : ''}`;
+
+                return (
+                  <Link
+                    key={room.id}
+                    to={roomUrl}
+                    className="group flex flex-col sm:flex-row bg-white dark:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] hover:border-[#C5A059]/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]"
+                  >
+                    <div className="sm:w-44 sm:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-36 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                      <img
+                        src={getPhotoUrl(room.photos?.[0])}
+                        alt={room.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 p-4 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2] group-hover:text-[#C5A059] transition-colors mb-1 font-display">
+                          {room.name}
+                        </h3>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          <span className="px-2 py-0.5 bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] text-[11px] font-sans font-semibold rounded-full capitalize">
+                            {room.type}
+                          </span>
+                          <span className="px-2 py-0.5 bg-[#f5f3f0] dark:bg-[#191816] text-[#46483f] dark:text-[#ded9d6] text-[11px] font-sans font-medium rounded-full">
+                            {room.capacity} {t('guests', 'tamu')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-[#827D75] dark:text-[#ded9d6] line-clamp-2">{room.description}</p>
+                      </div>
+                      <div className="flex items-center justify-between mt-3 border-t border-[#e8e6e1]/50 dark:border-[#30312f] pt-2">
+                        <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
+                          ${room.pricePerNight}
+                          <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
                         </span>
                       </div>
-                      <p className="text-sm text-[#827D75] dark:text-[#ded9d6] line-clamp-2">{room.description}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-3 border-t border-[#e8e6e1]/50 dark:border-[#30312f] pt-2">
-                      <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
-                        ${room.pricePerNight}
-                        <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
-                      </span>
-                      <Link
-                        to={`/rooms/${room.id}${checkIn ? `?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}` : ''}`}
-                        className="text-xs font-sans font-semibold uppercase tracking-wider text-[#C5A059] hover:underline"
-                      >
-                        {t('View Details', 'Lihat Detail')}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </main>

@@ -212,12 +212,12 @@ const DEFAULT_ROOMS: Room[] = [
     capacity: 3,
     bedType: 'king',
     pricePerNight: 139,
-    description: 'Overlooking our serene pool, the Pool Deluxe room offers a tranquil escape. With extra space, a king bed, and thoughtful amenities including a coffee machine and balcony, it is ideal for those seeking relaxation with a view.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'Pool View'],
+    description: 'Overlooking the vibrant city scene of Penuin, this Deluxe room offers a tranquil escape. With extra space, a king bed, and thoughtful amenities including an electric kettle and balcony, it is ideal for those seeking relaxation in the heart of Batam.',
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Electric Kettle', 'Balcony', 'City View'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe_2.png`, `${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '35 m²',
-    view: 'Pool',
+    view: 'City',
   },
   {
     id: 5,
@@ -228,7 +228,7 @@ const DEFAULT_ROOMS: Room[] = [
     bedType: 'king',
     pricePerNight: 199,
     description: 'The Skyline Suite is our signature accommodation, featuring a separate living area, king bedroom, and panoramic skyline views. Perfect for families or extended stays, with all the comforts of home and boutique hotel luxury.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'Skyline View', 'Bathtub', 'Iron & Board'],
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Complimentary Water', 'Electric Kettle', 'Balcony', 'Skyline View', 'Bathtub', 'Iron & Board'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/suite/suite.jpg`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '52 m²',
@@ -243,7 +243,7 @@ const DEFAULT_ROOMS: Room[] = [
     bedType: 'king',
     pricePerNight: 249,
     description: 'Our crown jewel. The Penthouse Suite offers unmatched luxury with a spacious living area, premium king bedroom, and breathtaking panoramic views. Every detail has been carefully curated for the most discerning guests.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'City View', 'Rain Shower', 'Iron & Board', 'Desk'],
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Complimentary Water', 'Electric Kettle', 'Balcony', 'City View', 'Rain Shower', 'Iron & Board', 'Desk'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/suite2/suite2_2.png`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '68 m²',
@@ -314,6 +314,7 @@ import {
   updateRoomInSupabase,
   deleteRoomFromSupabase,
 } from './supabase';
+import { calculateNights, parseDateString, toDateString } from './dateUtils';
 
 export async function syncRoomsWithSupabase(): Promise<Room[]> {
   const sbRooms = await fetchRoomsFromSupabase();
@@ -335,6 +336,10 @@ export function getRoomById(id: number): Room | undefined {
 }
 
 export function getAvailableRooms(checkIn: string, checkOut: string, guests?: number): Room[] {
+  if (!checkIn || !checkOut) return [];
+  const nights = calculateNights(checkIn, checkOut);
+  if (nights < 1) return [];
+
   const rooms = getRooms();
   const blockedDates = getBlockedDates();
 
@@ -342,10 +347,10 @@ export function getAvailableRooms(checkIn: string, checkOut: string, guests?: nu
     if (room.status !== 'available') return false;
     if (guests && room.capacity < guests) return false;
 
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const start = parseDateString(checkIn);
+    const end = parseDateString(checkOut);
     for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toDateString(d);
       const isBlocked = blockedDates.some(
         (bd) => bd.roomId === room.id && bd.date === dateStr
       );
@@ -472,9 +477,11 @@ export function createBooking(data: {
   const room = getRoomById(data.roomId);
   if (!room) throw new Error('Room not found');
 
-  const checkIn = new Date(data.checkIn);
-  const checkOut = new Date(data.checkOut);
-  const nights = Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+  const nights = calculateNights(data.checkIn, data.checkOut);
+  if (nights < 1) {
+    throw new Error('Invalid booking dates: stay must be for at least 1 night.');
+  }
+
   const subtotal = room.pricePerNight * nights;
   const taxAmount = subtotal * 0.1;
   const totalAmount = subtotal + taxAmount;
@@ -509,8 +516,10 @@ export function createBooking(data: {
 
   // Block dates
   const datesToBlock: string[] = [];
-  for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-    datesToBlock.push(d.toISOString().split('T')[0]);
+  const start = parseDateString(data.checkIn);
+  const end = parseDateString(data.checkOut);
+  for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+    datesToBlock.push(toDateString(d));
   }
   blockDates(data.roomId, datesToBlock, 'booking', booking.id);
 

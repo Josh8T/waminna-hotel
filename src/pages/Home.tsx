@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wifi, Car, Coffee, Waves, ArrowRight, Calendar, Users } from 'lucide-react';
+import { Wifi, Car, Clock, MapPin, ArrowRight, Calendar, Users, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { initializeData } from '@/lib/data';
+import { getTodayString, getTomorrowString, validateStayDates, calculateNights } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -30,6 +32,7 @@ export default function Home() {
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('2');
+  const [dateError, setDateError] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,18 +44,64 @@ export default function Home() {
     }
   }, []);
 
+  const today = getTodayString();
+  const minCheckOut = checkIn ? getTomorrowString(checkIn) : getTomorrowString();
+  const nights = calculateNights(checkIn, checkOut);
+
+  const handleCheckInChange = (newCheckIn: string) => {
+    setCheckIn(newCheckIn);
+    setDateError(null);
+
+    // If checkOut was already selected and is same-day or earlier than new check-in,
+    // auto-advance checkOut to ensure at least 1 night stay.
+    if (newCheckIn) {
+      if (checkOut && checkOut <= newCheckIn) {
+        const nextDay = getTomorrowString(newCheckIn);
+        setCheckOut(nextDay);
+        toast.info(
+          t(
+            'Check-out date adjusted to ensure a minimum 1-night stay.',
+            'Tanggal keluar disesuaikan untuk memastikan minimum 1 malam menginap.'
+          )
+        );
+      }
+    }
+  };
+
+  const handleCheckOutChange = (newCheckOut: string) => {
+    if (checkIn && newCheckOut <= checkIn) {
+      const msg = t(
+        'Same-day check-out is not allowed. Check-out must be at least 1 day after check-in.',
+        'Check-out di hari yang sama tidak diperbolehkan. Tanggal keluar harus minimal 1 hari setelah tanggal masuk.'
+      );
+      setDateError(msg);
+      toast.warning(msg);
+      setCheckOut(getTomorrowString(checkIn));
+      return;
+    }
+    setDateError(null);
+    setCheckOut(newCheckOut);
+  };
+
   const handleSearch = () => {
+    const validation = validateStayDates(checkIn, checkOut);
+    if (!validation.isValid) {
+      const msg = t(validation.messageEn, validation.messageId);
+      setDateError(msg);
+      toast.error(msg);
+      if (searchRef.current) {
+        searchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    setDateError(null);
     const params = new URLSearchParams();
-    if (checkIn) params.set('checkIn', checkIn);
-    if (checkOut) params.set('checkOut', checkOut);
+    params.set('checkIn', checkIn);
+    params.set('checkOut', checkOut);
     params.set('guests', guests);
     navigate(`/rooms?${params.toString()}`);
   };
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const dayAfter = new Date();
-  dayAfter.setDate(dayAfter.getDate() + 2);
 
   return (
     <div className="min-h-screen bg-[#fbf9f6] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2] transition-colors">
@@ -83,65 +132,96 @@ export default function Home() {
           </p>
 
           {/* Floating Availability Search Bar */}
-          <div id="search-bar" ref={searchRef} className="w-full max-w-[900px] bg-[#F7F5F2] dark:bg-[#242320] rounded-lg p-2.5 mt-4 flex flex-col md:flex-row items-center gap-3 border border-[#827D75]/20 dark:border-[#30312f] shadow-[0_8px_30px_rgb(0,0,0,0.15)] text-[#1C1C19] dark:text-[#F7F5F2]">
-            <div className="flex-1 w-full px-4 py-2 border-b md:border-b-0 md:border-r border-[#827D75]/20 dark:border-[#30312f]">
-              <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] mb-1 font-sans">
-                {t('Check In', 'Tanggal Masuk')}
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  min={tomorrow.toISOString().split('T')[0]}
-                  className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2]"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 w-full px-4 py-2 border-b md:border-b-0 md:border-r border-[#827D75]/20 dark:border-[#30312f]">
-              <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] mb-1 font-sans">
-                {t('Check Out', 'Tanggal Keluar')}
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  min={checkIn || dayAfter.toISOString().split('T')[0]}
-                  className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2]"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 w-full px-4 py-2">
-              <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] mb-1 font-sans">
-                {t('Guests', 'Tamu')}
-              </label>
-              <div className="relative">
-                <Users className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
-                <select
-                  value={guests}
-                  onChange={(e) => setGuests(e.target.value)}
-                  className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2] cursor-pointer"
-                >
-                  {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <option key={n} value={n} className="dark:bg-[#242320]">
-                      {n} {n === 1 ? t('Guest', 'Tamu') : t('Guests', 'Tamu')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              onClick={handleSearch}
-              className="w-full md:w-auto px-8 py-3.5 bg-[#C5A059] hover:bg-[#b08d49] text-[#1C1C19] font-medium text-xs uppercase tracking-wider rounded transition-all whitespace-nowrap shadow-sm flex items-center justify-center gap-2"
+          <div className="w-full max-w-[900px] mt-4 flex flex-col gap-2">
+            <div
+              id="search-bar"
+              ref={searchRef}
+              className={`w-full bg-[#F7F5F2] dark:bg-[#242320] rounded-lg p-2.5 flex flex-col md:flex-row items-center gap-3 border ${
+                dateError
+                  ? 'border-red-500/60 ring-1 ring-red-500/40'
+                  : 'border-[#827D75]/20 dark:border-[#30312f]'
+              } shadow-[0_8px_30px_rgb(0,0,0,0.15)] text-[#1C1C19] dark:text-[#F7F5F2] transition-all`}
             >
-              {t('Check Availability', 'Cek Ketersediaan')} <ArrowRight className="w-4 h-4" />
-            </button>
+              <div className="flex-1 w-full px-4 py-2 border-b md:border-b-0 md:border-r border-[#827D75]/20 dark:border-[#30312f]">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] font-sans">
+                    {t('Check In', 'Tanggal Masuk')}
+                  </label>
+                  <span className="text-[10px] text-red-500 font-bold">*</span>
+                </div>
+                <div className="relative">
+                  <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
+                  <input
+                    type="date"
+                    value={checkIn}
+                    onChange={(e) => handleCheckInChange(e.target.value)}
+                    min={today}
+                    className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 w-full px-4 py-2 border-b md:border-b-0 md:border-r border-[#827D75]/20 dark:border-[#30312f]">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] font-sans">
+                    {t('Check Out', 'Tanggal Keluar')}
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    {nights > 0 && (
+                      <span className="text-[10px] font-semibold text-[#C5A059] px-1.5 py-0.5 bg-[#C5A059]/15 rounded">
+                        {nights} {nights === 1 ? t('night', 'malam') : t('nights', 'malam')}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-red-500 font-bold">*</span>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
+                  <input
+                    type="date"
+                    value={checkOut}
+                    onChange={(e) => handleCheckOutChange(e.target.value)}
+                    min={minCheckOut}
+                    className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 w-full px-4 py-2">
+                <label className="block text-[11px] font-semibold tracking-widest uppercase text-[#46483F] dark:text-[#ded9d6] mb-1 font-sans">
+                  {t('Guests', 'Tamu')}
+                </label>
+                <div className="relative">
+                  <Users className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#827D75] dark:text-[#C5A059]" />
+                  <select
+                    value={guests}
+                    onChange={(e) => setGuests(e.target.value)}
+                    className="w-full pl-6 bg-transparent border-none p-0 focus:ring-0 text-sm font-sans text-[#1C1C19] dark:text-[#F7F5F2] cursor-pointer"
+                  >
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n} className="dark:bg-[#242320]">
+                        {n} {n === 1 ? t('Guest', 'Tamu') : t('Guests', 'Tamu')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSearch}
+                className="w-full md:w-auto px-8 py-3.5 bg-[#C5A059] hover:bg-[#b08d49] text-[#1C1C19] font-medium text-xs uppercase tracking-wider rounded transition-all whitespace-nowrap shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {t('Check Availability', 'Cek Ketersediaan')} <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Error / Validation Warning Alert */}
+            {dateError && (
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-red-950/85 border border-red-500/50 rounded-lg text-red-100 text-xs font-sans shadow-lg backdrop-blur-sm">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="font-medium">{dateError}</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -288,10 +368,26 @@ export default function Home() {
         </div>
         <div className="reveal grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { icon: Wifi, label: t('High-Speed Wi-Fi', 'Wi-Fi Cepat'), desc: t('Complimentary fiber optic', 'Serat optik gratis') },
-            { icon: Car, label: t('Valet Parking', 'Layanan Valet'), desc: t('Secure subterranean parking', 'Parkir bawah tanah aman') },
-            { icon: Coffee, label: t('Artisanal Breakfast', 'Sarapan Spesial'), desc: t('Fresh local & continental', 'Lokal & kontinental segar') },
-            { icon: Waves, label: t('Skyline Pool & Spa', 'Kolam & Spa Skyline'), desc: t('Overlooking the city horizon', 'Pemandangan cakrawala kota') },
+            {
+              icon: Wifi,
+              label: t('High-Speed Wi-Fi', 'Wi-Fi Cepat'),
+              desc: t('Complimentary in all rooms & areas', 'Gratis di seluruh kamar & area publik'),
+            },
+            {
+              icon: Car,
+              label: t('On-Site Parking', 'Parkir di Lokasi'),
+              desc: t('Complimentary for hotel guests', 'Parkir gratis untuk tamu menginap'),
+            },
+            {
+              icon: Clock,
+              label: t('24-Hour Front Desk', 'Resepsionis 24 Jam'),
+              desc: t('Round-the-clock desk & luggage storage', 'Layanan 24/7 & penitipan bagasi gratis'),
+            },
+            {
+              icon: MapPin,
+              label: t('Prime City Location', 'Lokasi Strategis'),
+              desc: t('Steps to Grand Batam & BCS Mall', 'Dekat Grand Batam & BCS Mall'),
+            },
           ].map(({ icon: Icon, label, desc }) => (
             <div key={label} className="text-center p-6 rounded-xl bg-white dark:bg-[#242320] border border-[#827D75]/20 dark:border-[#30312f] shadow-xs hover:border-[#C5A059]/40 transition-colors">
               <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center rounded-full bg-[#f5f3f0] dark:bg-[#30312f]">

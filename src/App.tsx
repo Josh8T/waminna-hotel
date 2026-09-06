@@ -16,6 +16,7 @@ import AdminOverview from '@/pages/admin/Overview';
 import AdminBookings from '@/pages/admin/Bookings';
 import AdminRooms from '@/pages/admin/Rooms';
 import AdminUsers from '@/pages/admin/Users';
+import { Toaster } from '@/components/ui/sonner';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'user' | 'staff' | 'owner' }) {
   const { user, hasRole, isLoading } = useAuth();
@@ -36,7 +37,8 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/rooms" element={<RoomListing />} />
       <Route path="/rooms/:id" element={<RoomDetail />} />
@@ -90,5 +92,7 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <Toaster richColors position="top-center" closeButton />
+    </>
   );
 }

@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Check, Users, BedDouble, Maximize, Eye } from 'lucide-react';
+import { ChevronLeft, Check, Users, BedDouble, Maximize, Eye, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { getRoomById, getAvailableRooms, getPhotoUrl } from '@/lib/data';
 import type { Room } from '@/lib/data';
+import { getTodayString, getTomorrowString, validateStayDates } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -21,13 +23,42 @@ export default function RoomDetail() {
 
   const room: Room | undefined = getRoomById(roomId);
 
-  const nights = useMemo(() => {
-    if (!checkIn || !checkOut) return 0;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+  const today = getTodayString();
+  const minCheckOut = checkIn ? getTomorrowString(checkIn) : getTomorrowString();
+
+  const dateValidation = useMemo(() => {
+    return validateStayDates(checkIn, checkOut);
   }, [checkIn, checkOut]);
+
+  const nights = dateValidation.isValid ? dateValidation.nights : 0;
+
+  const handleCheckInChange = (newCheckIn: string) => {
+    setCheckIn(newCheckIn);
+    if (newCheckIn && checkOut && checkOut <= newCheckIn) {
+      const nextDay = getTomorrowString(newCheckIn);
+      setCheckOut(nextDay);
+      toast.info(
+        t(
+          'Check-out date adjusted to ensure a minimum 1-night stay.',
+          'Tanggal keluar disesuaikan untuk memastikan minimum 1 malam menginap.'
+        )
+      );
+    }
+  };
+
+  const handleCheckOutChange = (newCheckOut: string) => {
+    if (checkIn && newCheckOut <= checkIn) {
+      toast.warning(
+        t(
+          'Same-day check-out is not allowed. Check-out must be at least 1 day after check-in.',
+          'Check-out di hari yang sama tidak diperbolehkan. Tanggal keluar harus minimal 1 hari setelah tanggal masuk.'
+        )
+      );
+      setCheckOut(getTomorrowString(checkIn));
+      return;
+    }
+    setCheckOut(newCheckOut);
+  };
 
   const priceSummary = useMemo(() => {
     if (!room || nights === 0) return null;
@@ -37,10 +68,10 @@ export default function RoomDetail() {
   }, [room, nights]);
 
   const isAvailable = useMemo(() => {
-    if (!checkIn || !checkOut || !room) return true;
+    if (!checkIn || !checkOut || !room || !dateValidation.isValid) return false;
     const available = getAvailableRooms(checkIn, checkOut, parseInt(guests));
     return available.some((r) => r.id === room.id);
-  }, [checkIn, checkOut, guests, room]);
+  }, [checkIn, checkOut, guests, room, dateValidation.isValid]);
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -192,25 +223,32 @@ export default function RoomDetail() {
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-1">
-                  {t('Check-in', 'Tanggal Masuk')}
+                  {t('Check-in', 'Tanggal Masuk')} *
                 </label>
                 <input
                   type="date"
                   value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => handleCheckInChange(e.target.value)}
+                  min={today}
                   className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6] mb-1">
-                  {t('Check-out', 'Tanggal Keluar')}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-sans font-semibold tracking-wider uppercase text-[#827D75] dark:text-[#ded9d6]">
+                    {t('Check-out', 'Tanggal Keluar')} *
+                  </label>
+                  {nights > 0 && (
+                    <span className="text-[10px] font-semibold text-[#C5A059] px-1.5 py-0.5 bg-[#C5A059]/15 rounded">
+                      {nights} {nights === 1 ? t('night', 'malam') : t('nights', 'malam')}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="date"
                   value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  min={checkIn || new Date().toISOString().split('T')[0]}
+                  onChange={(e) => handleCheckOutChange(e.target.value)}
+                  min={minCheckOut}
                   className="w-full px-3 py-2 border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
                 />
               </div>
@@ -232,6 +270,14 @@ export default function RoomDetail() {
               </div>
             </div>
 
+            {/* Warning alert if dates invalid */}
+            {checkIn && checkOut && !dateValidation.isValid && (
+              <div className="flex items-center gap-2 p-2.5 mb-4 bg-red-500/10 border border-red-500/30 rounded text-red-700 dark:text-red-400 text-xs font-sans">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{t(dateValidation.messageEn, dateValidation.messageId)}</span>
+              </div>
+            )}
+
             {priceSummary && (
               <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-3 mb-4 space-y-1.5 font-sans">
                 <div className="flex justify-between text-sm">
@@ -252,18 +298,21 @@ export default function RoomDetail() {
             )}
 
             <Link
-              to={`/booking${queryStr}`}
+              to={dateValidation.isValid && isAvailable ? `/booking${queryStr}` : '#'}
               className={`block w-full py-3 text-center rounded-md text-xs uppercase tracking-wider font-sans font-semibold transition-all ${
-                checkIn && checkOut && isAvailable
-                  ? 'bg-[#C5A059] text-[#1C1C19] hover:bg-[#b08d49] shadow-sm'
+                dateValidation.isValid && isAvailable
+                  ? 'bg-[#C5A059] text-[#1C1C19] hover:bg-[#b08d49] shadow-sm cursor-pointer'
                   : 'bg-[#827D75]/30 text-[#827D75] cursor-not-allowed pointer-events-none'
               }`}
+              aria-disabled={!dateValidation.isValid || !isAvailable}
             >
-              {checkIn && checkOut
-                ? isAvailable
-                  ? t('Book Now', 'Pesan Sekarang')
-                  : t('Not Available', 'Tidak Tersedia')
-                : t('Select Dates', 'Pilih Tanggal')}
+              {!checkIn || !checkOut
+                ? t('Select Dates', 'Pilih Tanggal')
+                : !dateValidation.isValid
+                ? t('Minimum 1 Night Required', 'Minimal 1 Malam Diperlukan')
+                : isAvailable
+                ? t('Book Now', 'Pesan Sekarang')
+                : t('Not Available', 'Tidak Tersedia')}
             </Link>
 
             <p className="text-[11px] text-[#827D75] dark:text-white/60 text-center mt-3 font-sans">
