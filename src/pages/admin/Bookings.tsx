@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { getBookings, getRoomById, updateBookingStatus, initializeData } from '@/lib/data';
+import { fetchAllBookings, getRoomById, updateBookingStatus, initializeData } from '@/lib/data';
 import type { Booking, BookingStatus } from '@/lib/data';
 import AdminLayout from '@/components/AdminLayout';
 
@@ -13,7 +13,7 @@ export default function AdminBookings() {
 
   useEffect(() => {
     initializeData();
-    setBookings(getBookings());
+    fetchAllBookings().then(setBookings);
   }, []);
 
   const filtered = bookings.filter((b) => {
@@ -29,9 +29,10 @@ export default function AdminBookings() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const handleStatusChange = (id: number, status: BookingStatus) => {
-    updateBookingStatus(id, status);
-    setBookings(getBookings());
+  const handleStatusChange = async (id: number, status: BookingStatus) => {
+    await updateBookingStatus(id, status);
+    const updated = await fetchAllBookings();
+    setBookings(updated);
   };
 
   const statusBadge = (status: string) => {

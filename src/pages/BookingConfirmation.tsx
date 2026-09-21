@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle, CalendarDays, Mail, ArrowRight, Home } from 'lucide-react';
-import { getBookingByReference, initializeData, getRoomById } from '@/lib/data';
+import { CheckCircle, CalendarDays, Mail, ArrowRight, Home, Loader2 } from 'lucide-react';
+import { fetchBookingByRef, initializeData, getRoomById } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -16,16 +16,19 @@ export default function BookingConfirmation() {
 
   useEffect(() => {
     initializeData();
-    if (ref) {
-      const b = getBookingByReference(ref);
-      if (b) {
-        setBooking(b);
+    async function fetchBooking() {
+      if (ref) {
+        const b = await fetchBookingByRef(ref);
+        if (b) {
+          setBooking(b);
+        } else {
+          setNotFound(true);
+        }
       } else {
         setNotFound(true);
       }
-    } else {
-      setNotFound(true);
     }
+    fetchBooking();
   }, [ref]);
 
   if (notFound) {
@@ -53,9 +56,10 @@ export default function BookingConfirmation() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] flex items-center justify-center">
+      <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] flex flex-col items-center justify-center font-sans transition-colors">
         <Header />
-        <div className="w-8 h-8 border-2 border-[#C5A059]/30 border-t-[#C5A059] rounded-full animate-spin" />
+        <Loader2 className="w-10 h-10 animate-spin text-[#C5A059]" />
+        <p className="mt-4 text-[#827D75] dark:text-[#ded9d6]">{t('Loading confirmation...', 'Memuat konfirmasi...')}</p>
       </div>
     );
   }

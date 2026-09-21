@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:staging": "vite --mode staging",
+    "dev:prod": "vite --mode production",
     "build": "rm -rf dist && tsc -b && vite build --emptyOutDir",
+    "build:staging": "rm -rf dist && tsc -b && vite build --mode staging --emptyOutDir",
+    "build:prod": "rm -rf dist && tsc -b && vite build --mode production --emptyOutDir",
     "deploy": "npx wrangler deploy",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "switch-env": "node scripts/switch-env.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

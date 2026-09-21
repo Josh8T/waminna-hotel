@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, Users2, BedDouble, DollarSign } from 'lucide-react';
-import { getDashboardStats, getBookings, getRoomById, initializeData } from '@/lib/data';
+import { fetchAllBookings, getRooms, getRoomById, initializeData } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import AdminLayout from '@/components/AdminLayout';
 
@@ -17,28 +17,56 @@ export default function AdminOverview() {
 
   useEffect(() => {
     initializeData();
-    setStats(getDashboardStats());
 
-    const allBookings = getBookings();
-    const today = new Date().toISOString().split('T')[0];
-    const todayCheckinsList = allBookings.filter(
-      (b) => b.checkIn === today && b.status === 'confirmed'
-    ).slice(0, 5);
-    setCheckins(todayCheckinsList);
+    async function loadData() {
+      const allBookings = await fetchAllBookings();
+      const rooms = getRooms();
+      const today = new Date().toISOString().split('T')[0];
+      const currentMonth = today.substring(0, 7);
 
-    // Room occupancy status
-    const status: Record<number, 'occupied' | 'available' | 'maintenance'> = {};
-    for (let i = 1; i <= 6; i++) {
-      const isOccupied = allBookings.some(
-        (b) =>
-          b.roomId === i &&
-          b.status === 'confirmed' &&
-          b.checkIn <= today &&
-          b.checkOut > today
+      const todayCheckinsList = allBookings.filter(
+        (b) => b.checkIn === today && b.status === 'confirmed'
       );
-      status[i] = isOccupied ? 'occupied' : Math.random() > 0.85 ? 'maintenance' : 'available';
+      
+      const activeBookings = allBookings.filter(
+        (b) => b.status === 'confirmed' && b.checkOut >= today
+      ).length;
+
+      const occupiedRooms = new Set(
+        allBookings
+          .filter((b) => b.status === 'confirmed' && b.checkIn <= today && b.checkOut > today)
+          .map((b) => b.roomId)
+      ).size;
+
+      const monthlyRevenue = allBookings
+        .filter((b) => b.createdAt.startsWith(currentMonth) && b.status !== 'cancelled')
+        .reduce((sum, b) => sum + b.totalAmount, 0);
+
+      setStats({
+        todayCheckins: todayCheckinsList.length,
+        activeBookings,
+        occupiedRooms,
+        totalRooms: rooms.length,
+        monthlyRevenue,
+      });
+
+      setCheckins(todayCheckinsList.slice(0, 5));
+
+      // Room occupancy status
+      const status: Record<number, 'occupied' | 'available' | 'maintenance'> = {};
+      for (let i = 1; i <= 6; i++) {
+        const isOccupied = allBookings.some(
+          (b) =>
+            b.roomId === i &&
+            b.status === 'confirmed' &&
+            b.checkIn <= today &&
+            b.checkOut > today
+        );
+        status[i] = isOccupied ? 'occupied' : Math.random() > 0.85 ? 'maintenance' : 'available';
+      }
+      setRoomStatus(status);
     }
-    setRoomStatus(status);
+    loadData();
   }, []);
 
   const statCards = [

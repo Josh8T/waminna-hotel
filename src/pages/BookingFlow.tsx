@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, AlertTriangle } from 'lucide-react';
 import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
 import { validateStayDates } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function BookingFlow() {
   const { t } = useThemeLanguage();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roomId = parseInt(searchParams.get('roomId') || '0');
@@ -29,6 +31,18 @@ export default function BookingFlow() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        firstName: prev.firstName || user.firstName || '',
+        lastName: prev.lastName || user.lastName || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+      }));
+    }
+  }, [user]);
 
   const room = getRoomById(roomId);
   const dateValidation = validateStayDates(checkIn, checkOut);
@@ -113,7 +127,7 @@ export default function BookingFlow() {
 
     setIsSubmitting(true);
     try {
-      const booking = createBooking({
+      const booking = await createBooking({
         roomId,
         checkIn,
         checkOut,
@@ -123,6 +137,7 @@ export default function BookingFlow() {
         guestEmail: formData.email,
         guestPhone: formData.phone || undefined,
         specialRequests: formData.specialRequests || undefined,
+        userId: user?.id || null,
       });
       navigate(`/booking-confirmation?ref=${booking.bookingReference}`);
     } catch {

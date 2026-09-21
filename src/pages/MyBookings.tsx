@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Users, ArrowRight, BedDouble } from 'lucide-react';
-import { getBookingsByEmail, getRoomById, initializeData, getPhotoUrl } from '@/lib/data';
+import { CalendarDays, Users, ArrowRight, BedDouble, Loader2 } from 'lucide-react';
+import { fetchUserBookings, getRoomById, initializeData, getPhotoUrl } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import { useAuth } from '@/hooks/useAuth';
 import Header from '@/components/Header';
@@ -13,13 +13,21 @@ export default function MyBookings() {
   const { t } = useThemeLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     initializeData();
-    if (user) {
-      const userBookings = getBookingsByEmail(user.email);
-      setBookings(userBookings);
+    async function loadBookings() {
+      if (user) {
+        setIsLoading(true);
+        const userBookings = await fetchUserBookings(user.id, user.email);
+        setBookings(userBookings);
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
+      }
     }
+    loadBookings();
   }, [user]);
 
   const filteredBookings = filter === 'all'
@@ -69,7 +77,12 @@ export default function MyBookings() {
           ))}
         </div>
 
-        {filteredBookings.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-[#C5A059] mb-4" />
+            <p className="text-[#827D75] dark:text-[#ded9d6]">{t('Loading bookings...', 'Memuat reservasi...')}</p>
+          </div>
+        ) : filteredBookings.length === 0 ? (
           <div className="text-center py-16 px-6 bg-white dark:bg-[#242320] rounded-2xl border border-[#e8e6e1] dark:border-[#30312f] shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-[#f5f3f0] dark:bg-[#191816] flex items-center justify-center mx-auto mb-4 text-[#C5A059]">
               <BedDouble className="w-8 h-8" />

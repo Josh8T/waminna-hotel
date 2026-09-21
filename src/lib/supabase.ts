@@ -3,9 +3,12 @@ import type { UserRole } from '@/lib/data';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const APP_ENV = import.meta.env.VITE_APP_ENV || 'development';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables in .env file.');
+  console.warn(`Missing Supabase environment variables in .env for environment: ${APP_ENV}`);
+} else {
+  console.log(`🔌 Initialized Supabase client for environment: ${APP_ENV}`);
 }
 
 export const supabase = createClient(
@@ -260,4 +263,103 @@ export async function deleteRoomFromSupabase(id: number) {
   }
 }
 
+// ====== SUPABASE BOOKING & BLOCKED DATES OPERATIONS ======
 
+export async function fetchBookingsFromSupabase() {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.warn('Supabase fetch bookings notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase fetch bookings error:', err);
+    return null;
+  }
+}
+
+export async function fetchBookingsForUser(userId?: string | null, email?: string | null) {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    let query = supabase.from('bookings').select('*');
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else if (email) {
+      query = query.eq('guest_email', email);
+    } else {
+      return []; // Must provide at least one
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) {
+      console.warn('Supabase fetch user bookings notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase fetch user bookings error:', err);
+    return null;
+  }
+}
+
+export async function fetchBookingByReferenceFromSupabase(ref: string) {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    // using the RPC function for unauthenticated secure access
+    const { data, error } = await supabase.rpc('get_booking_by_reference', { p_ref: ref });
+    if (error) {
+      console.warn('Supabase fetch booking by ref notice:', error.message);
+      return null;
+    }
+    return data && data.length > 0 ? data[0] : null;
+  } catch (err) {
+    console.warn('Supabase fetch booking by ref error:', err);
+    return null;
+  }
+}
+
+export async function insertBookingToSupabase(bookingData: any) {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase.from('bookings').insert([bookingData]).select().single();
+    if (error) {
+      console.warn('Supabase create booking notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase create booking error:', err);
+    return null;
+  }
+}
+
+export async function updateBookingStatusInSupabase(id: number, status: string) {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase.from('bookings').update({ status }).eq('id', id).select().single();
+    if (error) {
+      console.warn('Supabase update booking notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase update booking error:', err);
+    return null;
+  }
+}
+
+export async function fetchBlockedDatesFromSupabase() {
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  try {
+    const { data, error } = await supabase.from('blocked_dates').select('*').order('date', { ascending: true });
+    if (error) {
+      console.warn('Supabase fetch blocked dates notice:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase fetch blocked dates error:', err);
+    return null;
+  }
+}

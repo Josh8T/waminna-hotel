@@ -44,7 +44,7 @@ export interface Review {
 export interface Booking {
   id: number;
   bookingReference: string;
-  userId: number | null;
+  userId: string | null;
   roomId: number;
   guestFirstName: string;
   guestLastName: string;
@@ -313,6 +313,12 @@ import {
   insertRoomToSupabase,
   updateRoomInSupabase,
   deleteRoomFromSupabase,
+  fetchBookingsFromSupabase,
+  fetchBookingsForUser,
+  fetchBookingByReferenceFromSupabase,
+  fetchBlockedDatesFromSupabase,
+  insertBookingToSupabase,
+  updateBookingStatusInSupabase
 } from './supabase';
 import { calculateNights, parseDateString, toDateString } from './dateUtils';
 
@@ -449,7 +455,35 @@ export function getBookingByReference(ref: string): Booking | undefined {
   return getBookings().find((b) => b.bookingReference === ref);
 }
 
-export function getBookingsByUser(userId: number): Booking[] {
+export async function fetchBookingByRef(ref: string): Promise<Booking | undefined> {
+  const sbBooking = await fetchBookingByReferenceFromSupabase(ref);
+  if (sbBooking) {
+    return {
+      id: sbBooking.id,
+      bookingReference: sbBooking.booking_reference,
+      userId: sbBooking.user_id,
+      roomId: sbBooking.room_id,
+      guestFirstName: sbBooking.guest_first_name,
+      guestLastName: sbBooking.guest_last_name,
+      guestEmail: sbBooking.guest_email,
+      guestPhone: sbBooking.guest_phone,
+      specialRequests: sbBooking.special_requests,
+      checkIn: sbBooking.check_in,
+      checkOut: sbBooking.check_out,
+      guestsCount: sbBooking.guests_count,
+      nights: sbBooking.nights,
+      subtotal: Number(sbBooking.subtotal),
+      taxAmount: Number(sbBooking.tax_amount),
+      totalAmount: Number(sbBooking.total_amount),
+      status: sbBooking.status as BookingStatus,
+      paymentStatus: sbBooking.payment_status,
+      createdAt: sbBooking.created_at,
+    };
+  }
+  return getBookingByReference(ref);
+}
+
+export function getBookingsByUser(userId: string): Booking[] {
   return getBookings().filter((b) => b.userId === userId);
 }
 
@@ -461,7 +495,63 @@ export function getBookingsByEmail(email: string): Booking[] {
   );
 }
 
-export function createBooking(data: {
+export async function fetchUserBookings(userId: string | null, email: string): Promise<Booking[]> {
+  const sbBookings = await fetchBookingsForUser(userId, email);
+  if (sbBookings && sbBookings.length > 0) {
+    return sbBookings.map((b: any) => ({
+      id: b.id,
+      bookingReference: b.booking_reference,
+      userId: b.user_id,
+      roomId: b.room_id,
+      guestFirstName: b.guest_first_name,
+      guestLastName: b.guest_last_name,
+      guestEmail: b.guest_email,
+      guestPhone: b.guest_phone,
+      specialRequests: b.special_requests,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestsCount: b.guests_count,
+      nights: b.nights,
+      subtotal: Number(b.subtotal),
+      taxAmount: Number(b.tax_amount),
+      totalAmount: Number(b.total_amount),
+      status: b.status as BookingStatus,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    }));
+  }
+  return getBookingsByEmail(email);
+}
+
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const sbBookings = await fetchBookingsFromSupabase();
+  if (sbBookings && sbBookings.length > 0) {
+    return sbBookings.map((b: any) => ({
+      id: b.id,
+      bookingReference: b.booking_reference,
+      userId: b.user_id,
+      roomId: b.room_id,
+      guestFirstName: b.guest_first_name,
+      guestLastName: b.guest_last_name,
+      guestEmail: b.guest_email,
+      guestPhone: b.guest_phone,
+      specialRequests: b.special_requests,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestsCount: b.guests_count,
+      nights: b.nights,
+      subtotal: Number(b.subtotal),
+      taxAmount: Number(b.tax_amount),
+      totalAmount: Number(b.total_amount),
+      status: b.status as BookingStatus,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    }));
+  }
+  return getBookings();
+}
+
+export async function createBooking(data: {
   roomId: number;
   checkIn: string;
   checkOut: string;
@@ -471,8 +561,8 @@ export function createBooking(data: {
   guestEmail: string;
   guestPhone?: string;
   specialRequests?: string;
-  userId?: number;
-}): Booking {
+  userId?: string | null;
+}): Promise<Booking> {
   const bookings = getBookings();
   const room = getRoomById(data.roomId);
   if (!room) throw new Error('Room not found');
@@ -511,6 +601,34 @@ export function createBooking(data: {
     createdAt: new Date().toISOString(),
   };
 
+  // Sync to Supabase Database
+  try {
+    const sbCreated = await insertBookingToSupabase({
+      booking_reference: booking.bookingReference,
+      user_id: booking.userId,
+      room_id: booking.roomId,
+      guest_first_name: booking.guestFirstName,
+      guest_last_name: booking.guestLastName,
+      guest_email: booking.guestEmail,
+      guest_phone: booking.guestPhone,
+      special_requests: booking.specialRequests,
+      check_in: booking.checkIn,
+      check_out: booking.checkOut,
+      guests_count: booking.guestsCount,
+      nights: booking.nights,
+      subtotal: booking.subtotal,
+      tax_amount: booking.taxAmount,
+      total_amount: booking.totalAmount,
+      status: booking.status,
+      payment_status: booking.paymentStatus,
+    });
+    if (sbCreated && sbCreated.id) {
+      booking.id = sbCreated.id;
+    }
+  } catch (err) {
+    console.warn('Supabase create booking notice:', err);
+  }
+
   bookings.push(booking);
   setItem(STORAGE_KEYS.bookings, bookings);
 
@@ -526,12 +644,15 @@ export function createBooking(data: {
   return booking;
 }
 
-export function updateBookingStatus(id: number, status: BookingStatus): Booking | null {
+export async function updateBookingStatus(id: number, status: BookingStatus): Promise<Booking | null> {
   const bookings = getBookings();
   const idx = bookings.findIndex((b) => b.id === id);
   if (idx === -1) return null;
   bookings[idx] = { ...bookings[idx], status };
   setItem(STORAGE_KEYS.bookings, bookings);
+
+  // Sync to Supabase Database
+  await updateBookingStatusInSupabase(id, status).catch((err) => console.warn('Supabase update notice:', err));
 
   if (status === 'cancelled') {
     const booking = bookings[idx];
