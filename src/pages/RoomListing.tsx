@@ -8,6 +8,7 @@ import { getTodayString, getTomorrowString, validateStayDates, formatDateRange }
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
+import { formatCurrency } from '@/lib/utils';
 
 export default function RoomListing() {
   const { t } = useThemeLanguage();
@@ -150,7 +151,7 @@ export default function RoomListing() {
             {t('Accommodation Catalog', 'Katalog Akomodasi')}
           </span>
           <h1 className="text-3xl sm:text-4xl font-display font-normal text-[#1c1b19] dark:text-[#F7F5F2] mt-1 mb-3">
-            {t('Rooms & Sanctuary Suites', 'Kamar & Suite Suaka')}
+            {t('Rooms', 'Kamar')}
           </h1>
           <div className="flex flex-wrap items-center gap-3">
             {checkIn && checkOut && dateValidation?.isValid && (
@@ -414,7 +415,7 @@ export default function RoomListing() {
                       </div>
                       <div className="flex items-center justify-between mt-3 border-t border-[#e8e6e1]/50 dark:border-[#30312f] pt-2">
                         <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
-                          ${room.pricePerNight}
+                          {formatCurrency(room.pricePerNight)}
                           <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
                         </span>
                       </div>

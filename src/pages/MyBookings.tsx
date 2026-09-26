@@ -4,6 +4,7 @@ import { CalendarDays, Users, ArrowRight, BedDouble, Loader2 } from 'lucide-reac
 import { fetchUserBookings, getRoomById, initializeData, getPhotoUrl } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/lib/utils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -153,7 +154,7 @@ export default function MyBookings() {
                     </div>
                     <div className="sm:text-right flex sm:flex-col justify-between items-end border-t sm:border-t-0 pt-3 sm:pt-0 border-[#e8e6e1] dark:border-[#30312f]">
                       <p className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">
-                        ${booking.totalAmount.toFixed(2)}
+                        {formatCurrency(booking.totalAmount)}
                       </p>
                       <Link
                         to={`/booking-confirmation?ref=${booking.bookingReference}`}

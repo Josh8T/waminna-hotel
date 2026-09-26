@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wifi, Car, Clock, MapPin, ArrowRight, Calendar, Users, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { initializeData } from '@/lib/data';
+import { initializeData, syncRoomsWithSupabase } from '@/lib/data';
+import type { Room } from '@/lib/data';
 import { getTodayString, getTomorrowString, validateStayDates, calculateNights } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -33,10 +34,12 @@ export default function Home() {
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState('2');
   const [dateError, setDateError] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     initializeData();
+    syncRoomsWithSupabase().then(setRooms).catch(console.error);
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('scrollToSearch') && searchRef.current) {
@@ -249,9 +252,9 @@ export default function Home() {
         </div>
 
         <div className="reveal-stagger grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[320px]">
-          {/* Large Feature Card - Skyline Suite (ID: 5) */}
+          {/* Large Feature Card - Skyline Suite */}
           <Link
-            to="/rooms/5"
+            to={rooms.find(r => r.name === 'Skyline Suite') ? `/rooms/${rooms.find(r => r.name === 'Skyline Suite')?.id}` : "#"}
             className="md:col-span-8 row-span-2 group relative rounded-xl overflow-hidden border border-[#827D75]/20 dark:border-[#30312f] shadow-sm hover:shadow-lg transition-all duration-300 bg-white dark:bg-[#242320]"
           >
             <img
@@ -266,26 +269,21 @@ export default function Home() {
                   {t('Signature', 'Utama')}
                 </span>
                 <h3 className="font-display text-2xl sm:text-3xl text-[#F7F5F2] mb-2 font-normal">
-                  The Skyline Suite
+                  {rooms.find(r => r.name === 'Skyline Suite')?.name || 'The Skyline Suite'}
                 </h3>
-                <p className="font-sans text-xs sm:text-sm text-[#F7F5F2]/80 max-w-md leading-relaxed">
-                  {t(
+                <p className="font-sans text-xs sm:text-sm text-[#F7F5F2]/80 max-w-md leading-relaxed line-clamp-2">
+                  {rooms.find(r => r.name === 'Skyline Suite')?.description || t(
                     'Our premier offering with panoramic corner views, a dedicated living area, and premium amenities tailored for the modern traveler.',
                     'Suite unggulan kami dengan pemandangan sudut panorama, ruang keluarga khusus, dan fasilitas premium.'
                   )}
                 </p>
               </div>
-              <div className="text-right hidden sm:block">
-                <span className="block font-sans text-[10px] text-[#F7F5F2]/70 uppercase tracking-widest mb-1">{t('From', 'Mulai')}</span>
-                <span className="font-sans text-2xl font-bold text-[#C5A059]">$199</span>
-                <span className="font-sans text-xs text-[#F7F5F2]/70"> / {t('night', 'malam')}</span>
-              </div>
             </div>
           </Link>
 
-          {/* Small Feature Card 1 - Executive Deluxe (ID: 3) */}
+          {/* Small Feature Card 1 - Executive Deluxe */}
           <Link
-            to="/rooms/3"
+            to={rooms.find(r => r.name === 'Executive Deluxe') ? `/rooms/${rooms.find(r => r.name === 'Executive Deluxe')?.id}` : "#"}
             className="md:col-span-4 row-span-1 group relative rounded-xl overflow-hidden border border-[#827D75]/20 dark:border-[#30312f] shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-[#242320]"
           >
             <img
@@ -296,20 +294,17 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#1C1C19]/85 to-transparent" />
             <div className="absolute bottom-0 left-0 p-6 w-full">
               <h3 className="font-display text-lg text-[#F7F5F2] mb-1 font-normal">
-                Executive Deluxe
+                {rooms.find(r => r.name === 'Executive Deluxe')?.name || 'Executive Deluxe'}
               </h3>
               <div className="flex justify-between items-center">
                 <span className="font-sans text-xs text-[#F7F5F2]/80">{t('City View', 'Pemandangan Kota')}</span>
-                <span className="font-sans text-lg font-bold text-[#C5A059]">
-                  $129<span className="text-xs font-sans text-[#F7F5F2]/70"> / {t('nt', 'mlm')}</span>
-                </span>
               </div>
             </div>
           </Link>
 
-          {/* Small Feature Card 2 - Penthouse Suite (ID: 6) */}
+          {/* Small Feature Card 2 - Penthouse Suite */}
           <Link
-            to="/rooms/6"
+            to={rooms.find(r => r.name === 'Penthouse Suite') ? `/rooms/${rooms.find(r => r.name === 'Penthouse Suite')?.id}` : "#"}
             className="md:col-span-4 row-span-1 group relative rounded-xl overflow-hidden border border-[#827D75]/20 dark:border-[#30312f] shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-[#242320]"
           >
             <img
@@ -320,13 +315,10 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#1C1C19]/85 to-transparent" />
             <div className="absolute bottom-0 left-0 p-6 w-full">
               <h3 className="font-display text-lg text-[#F7F5F2] mb-1 font-normal">
-                Penthouse Suite
+                {rooms.find(r => r.name === 'Penthouse Suite')?.name || 'Penthouse Suite'}
               </h3>
               <div className="flex justify-between items-center">
                 <span className="font-sans text-xs text-[#F7F5F2]/80">{t('Panoramic Views', 'Pemandangan Panorama')}</span>
-                <span className="font-sans text-lg font-bold text-[#C5A059]">
-                  $249<span className="text-xs font-sans text-[#F7F5F2]/70"> / {t('nt', 'mlm')}</span>
-                </span>
               </div>
             </div>
           </Link>

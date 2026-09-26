@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, CalendarDays, Mail, ArrowRight, Home, Loader2 } from 'lucide-react';
 import { fetchBookingByRef, initializeData, getRoomById } from '@/lib/data';
 import type { Booking } from '@/lib/data';
+import { formatCurrency } from '@/lib/utils';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -140,7 +141,7 @@ export default function BookingConfirmation() {
             </div>
             <div>
               <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mb-0.5">{t('Total Paid', 'Total Dibayar')}</p>
-              <p className="font-semibold text-base text-[#C5A059]">${booking.totalAmount.toFixed(2)}</p>
+              <p className="font-semibold text-base text-[#C5A059]">{formatCurrency(booking.totalAmount)}</p>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { getRooms, updateRoom, createRoom, deleteRoom, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType, RoomStatus } from '@/lib/data';
+import { formatCurrency } from '@/lib/utils';
 import AdminLayout from '@/components/AdminLayout';
 import ImageUploader from '@/components/ImageUploader';
 
@@ -151,7 +152,7 @@ export default function AdminRooms() {
                 </span>
               </div>
               <p className="text-sm font-semibold text-[#1a1917] mb-1">
-                ${room.pricePerNight}<span className="text-xs font-normal text-[#8a8984]">/night</span>
+                {formatCurrency(room.pricePerNight)}<span className="text-xs font-normal text-[#8a8984]">/night</span>
               </p>
               <p className="text-xs text-[#8a8984]">
                 {room.capacity} guests · {room.bedType} bed · {room.size}
@@ -230,7 +231,7 @@ export default function AdminRooms() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">Price/Night ($)</label>
+                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">Price/Night (IDR)</label>
                     <input
                       type="number"
                       min={1}

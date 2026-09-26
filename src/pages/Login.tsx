@@ -38,8 +38,8 @@ export default function Login() {
     <div className="min-h-screen bg-warm-bg flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <img src={`${import.meta.env.BASE_URL}images/logo/waminna_logo.png`} alt="Waminna Hotel Logo" className="h-8 w-auto" />
+          <Link to="/" className="inline-flex items-center justify-center mb-6 w-full">
+            <img src={`${import.meta.env.BASE_URL}images/logo/logo_transparent.png`} alt="Waminna Hotel Logo" className="h-20 w-auto" />
           </Link>
           <h1 className="text-2xl font-semibold text-[#1a1917] mb-1">Welcome back</h1>
           <p className="text-sm text-[#8a8984]">Sign in to your account</p>

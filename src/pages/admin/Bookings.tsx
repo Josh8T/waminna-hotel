@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { fetchAllBookings, getRoomById, updateBookingStatus, initializeData } from '@/lib/data';
 import type { Booking, BookingStatus } from '@/lib/data';
+import { formatCurrency } from '@/lib/utils';
 import AdminLayout from '@/components/AdminLayout';
 
 export default function AdminBookings() {
@@ -136,7 +137,7 @@ export default function AdminBookings() {
                       </td>
                       <td className="px-4 py-3">{statusBadge(b.status)}</td>
                       <td className="px-4 py-3 text-sm font-medium text-[#1a1917]">
-                        ${b.totalAmount.toFixed(2)}
+                        {formatCurrency(b.totalAmount)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="relative group inline-block">

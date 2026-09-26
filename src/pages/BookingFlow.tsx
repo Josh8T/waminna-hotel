@@ -6,6 +6,7 @@ import { validateStayDates } from '@/lib/dateUtils';
 import Header from '@/components/Header';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/lib/utils';
 
 export default function BookingFlow() {
   const { t } = useThemeLanguage();
@@ -204,7 +205,7 @@ export default function BookingFlow() {
                 />
                 <div>
                   <h3 className="font-semibold text-[#1a1917]">{room.name}</h3>
-                  <p className="text-sm text-[#8a8984]">${room.pricePerNight}/night</p>
+                  <p className="text-sm text-[#8a8984]">{formatCurrency(room.pricePerNight)}/night</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 text-center mb-6">
@@ -431,15 +432,15 @@ export default function BookingFlow() {
             <div className="space-y-2 text-sm border-t border-warm-border pt-3">
               <div className="flex justify-between">
                 <span className="text-[#5c5a54]">Subtotal</span>
-                <span className="text-[#1a1917]">${subtotal.toFixed(2)}</span>
+                <span className="text-[#1a1917]">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#5c5a54]">Taxes (10%)</span>
-                <span className="text-[#1a1917]">${tax.toFixed(2)}</span>
+                <span className="text-[#1a1917]">{formatCurrency(tax)}</span>
               </div>
               <div className="flex justify-between font-semibold text-base pt-2 border-t border-warm-border">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-warm-border">

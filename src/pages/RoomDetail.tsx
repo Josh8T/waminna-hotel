@@ -8,6 +8,7 @@ import { getTodayString, getTomorrowString, validateStayDates } from '@/lib/date
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
+import { formatCurrency } from '@/lib/utils';
 
 export default function RoomDetail() {
   const { t } = useThemeLanguage();
@@ -216,7 +217,7 @@ export default function RoomDetail() {
         <div className="lg:w-80 lg:min-w-[320px]">
           <div className="lg:sticky lg:top-20 bg-white dark:bg-[#242320] rounded-xl shadow-lg p-5 border border-[#e8e6e1] dark:border-[#30312f]">
             <p className="text-2xl font-sans font-bold text-[#414930] dark:text-[#C5A059] mb-4">
-              ${room.pricePerNight}
+              {formatCurrency(room.pricePerNight)}
               <span className="text-sm font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
             </p>
 
@@ -282,17 +283,17 @@ export default function RoomDetail() {
               <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-3 mb-4 space-y-1.5 font-sans">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#46483f] dark:text-[#ded9d6]">
-                    ${room.pricePerNight} × {nights} {t('nights', 'malam')}
+                    {formatCurrency(room.pricePerNight)} × {nights} {t('nights', 'malam')}
                   </span>
-                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">${priceSummary.subtotal}</span>
+                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">{formatCurrency(priceSummary.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[#46483f] dark:text-[#ded9d6]">{t('Taxes (10%)', 'Pajak (10%)')}</span>
-                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">${priceSummary.tax.toFixed(2)}</span>
+                  <span className="text-[#1c1b19] dark:text-[#F7F5F2]">{formatCurrency(priceSummary.tax)}</span>
                 </div>
                 <div className="flex justify-between text-base font-semibold pt-1 border-t border-[#e8e6e1] dark:border-[#30312f]">
                   <span>Total</span>
-                  <span className="text-[#C5A059]">${priceSummary.total.toFixed(2)}</span>
+                  <span className="text-[#C5A059]">{formatCurrency(priceSummary.total)}</span>
                 </div>
               </div>
             )}

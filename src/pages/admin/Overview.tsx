@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, Users2, BedDouble, DollarSign } from 'lucide-react';
 import { fetchAllBookings, getRooms, getRoomById, initializeData } from '@/lib/data';
 import type { Booking } from '@/lib/data';
+import { formatCurrency } from '@/lib/utils';
 import AdminLayout from '@/components/AdminLayout';
 
 export default function AdminOverview() {
@@ -73,7 +74,7 @@ export default function AdminOverview() {
     { label: 'Check-ins Today', value: stats.todayCheckins.toString(), icon: TrendingUp, color: 'text-[#1a1917]' },
     { label: 'Active Bookings', value: stats.activeBookings.toString(), icon: Users2, color: 'text-[#1a1917]' },
     { label: 'Rooms Occupied', value: `${stats.occupiedRooms}/${stats.totalRooms}`, icon: BedDouble, color: 'text-[#1a1917]' },
-    { label: 'Revenue (Month)', value: `$${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-brand' },
+    { label: 'Revenue (Month)', value: formatCurrency(stats.monthlyRevenue), icon: DollarSign, color: 'text-brand' },
   ];
 
   const occupancyRooms = [
