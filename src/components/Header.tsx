@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,27 @@ export default function Header() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    if (menuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
 
   const scrollToSearch = () => {
     if (location.pathname === '/') {
@@ -52,15 +74,27 @@ export default function Header() {
         </button>
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center">
+          {/* Mobile compact emblem icon to save header space */}
           <img
-            src={`${import.meta.env.BASE_URL}images/stitch/waminna_emblem.png`}
-            alt="Waminna Hotel Logo"
-            className="h-9 w-auto object-contain transition-transform hover:scale-105"
+            src={`${import.meta.env.BASE_URL}images/logo/logo_transparent.png`}
+            alt="Waminna Hotel"
+            className="h-8 w-auto object-contain block sm:hidden transition-transform hover:scale-105"
           />
-          <span className="font-display font-normal text-xl tracking-normal text-[#1c1b19] dark:text-[#F7F5F2] hidden sm:inline-block">
-            Waminna Hotel
-          </span>
+
+          {/* Desktop full horizontal lockup (Light Mode) */}
+          <img
+            src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_black.png`}
+            alt="Waminna Hotel"
+            className="h-8 sm:h-9 w-auto object-contain hidden sm:block sm:dark:hidden transition-transform hover:scale-105"
+          />
+
+          {/* Desktop full horizontal lockup (Dark Mode) */}
+          <img
+            src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
+            alt="Waminna Hotel"
+            className="h-8 sm:h-9 w-auto object-contain hidden sm:dark:block transition-transform hover:scale-105"
+          />
         </Link>
 
         {/* Desktop nav */}
@@ -177,28 +211,31 @@ export default function Header() {
       </div>
 
       {/* Mobile menu drawer */}
-      {menuOpen && (
-        <div className="lg:hidden">
+      {menuOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] lg:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999]"
             onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
           />
 
           {/* Drawer Panel */}
-          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-[#fbf9f6] dark:bg-[#1C1C19] text-[#1c1b19] dark:text-[#F7F5F2] z-50 shadow-2xl p-6 border-r border-[#e8e6e1] dark:border-[#30312f] flex flex-col justify-between overflow-y-auto">
+          <div className="fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] h-full h-dvh bg-[#fbf9f6] dark:bg-[#1C1C19] text-[#1c1b19] dark:text-[#F7F5F2] z-[10000] shadow-2xl p-6 border-r border-[#e8e6e1] dark:border-[#30312f] flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left duration-200">
             <div>
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-5 border-b border-[#e8e6e1] dark:border-[#30312f]">
-                <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3">
+                <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center">
                   <img
-                    src={`${import.meta.env.BASE_URL}images/stitch/waminna_nobg.png`}
-                    alt="Waminna Hotel Logo"
-                    className="h-9 w-auto object-contain"
+                    src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_black.png`}
+                    alt="Waminna Hotel"
+                    className="h-8 w-auto object-contain dark:hidden"
                   />
-                  <span className="font-display font-normal text-lg text-[#1c1b19] dark:text-[#F7F5F2]">
-                    Waminna Hotel
-                  </span>
+                  <img
+                    src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
+                    alt="Waminna Hotel"
+                    className="h-8 w-auto object-contain hidden dark:block"
+                  />
                 </Link>
                 <button
                   className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#46483f] dark:text-[#F7F5F2] transition-colors"
@@ -345,7 +382,8 @@ export default function Header() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   );

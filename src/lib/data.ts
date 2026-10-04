@@ -44,7 +44,7 @@ export interface Review {
 export interface Booking {
   id: number;
   bookingReference: string;
-  userId: number | null;
+  userId: string | null;
   roomId: number;
   guestFirstName: string;
   guestLastName: string;
@@ -212,12 +212,12 @@ const DEFAULT_ROOMS: Room[] = [
     capacity: 3,
     bedType: 'king',
     pricePerNight: 139,
-    description: 'Overlooking our serene pool, the Pool Deluxe room offers a tranquil escape. With extra space, a king bed, and thoughtful amenities including a coffee machine and balcony, it is ideal for those seeking relaxation with a view.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Coffee Machine', 'Balcony', 'Pool View'],
+    description: 'Overlooking the vibrant city scene of Penuin, this Deluxe room offers a tranquil escape. With extra space, a king bed, and thoughtful amenities including an electric kettle and balcony, it is ideal for those seeking relaxation in the heart of Batam.',
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Electric Kettle', 'Balcony', 'City View'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe_2.png`, `${import.meta.env.BASE_URL}images/rooms/deluxe/deluxe.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '35 m²',
-    view: 'Pool',
+    view: 'City',
   },
   {
     id: 5,
@@ -228,7 +228,7 @@ const DEFAULT_ROOMS: Room[] = [
     bedType: 'king',
     pricePerNight: 199,
     description: 'The Skyline Suite is our signature accommodation, featuring a separate living area, king bedroom, and panoramic skyline views. Perfect for families or extended stays, with all the comforts of home and boutique hotel luxury.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'Skyline View', 'Bathtub', 'Iron & Board'],
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Complimentary Water', 'Electric Kettle', 'Balcony', 'Skyline View', 'Bathtub', 'Iron & Board'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/suite/suite.jpg`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '52 m²',
@@ -243,7 +243,7 @@ const DEFAULT_ROOMS: Room[] = [
     bedType: 'king',
     pricePerNight: 249,
     description: 'Our crown jewel. The Penthouse Suite offers unmatched luxury with a spacious living area, premium king bedroom, and breathtaking panoramic views. Every detail has been carefully curated for the most discerning guests.',
-    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Room Service', 'Coffee Machine', 'Balcony', 'City View', 'Rain Shower', 'Iron & Board', 'Desk'],
+    amenities: ['Air Conditioning', 'Flat-screen TV', 'Free Wi-Fi', 'Mini Bar', 'Room Safe', 'Hair Dryer', 'Complimentary Water', 'Electric Kettle', 'Balcony', 'City View', 'Rain Shower', 'Iron & Board', 'Desk'],
     photos: [`${import.meta.env.BASE_URL}images/rooms/suite2/suite2_2.png`, `${import.meta.env.BASE_URL}images/rooms/suite2/image.png`, `${import.meta.env.BASE_URL}images/corridor/corridor2.png`, `${import.meta.env.BASE_URL}images/corridor/image.png`],
     status: 'available',
     size: '68 m²',
@@ -313,8 +313,14 @@ import {
   insertRoomToSupabase,
   updateRoomInSupabase,
   deleteRoomFromSupabase,
+  fetchBookingsFromSupabase,
+  fetchBookingsForUser,
+  fetchBookingByReferenceFromSupabase,
   fetchBlockedDatesFromSupabase,
+  insertBookingToSupabase,
+  updateBookingStatusInSupabase
 } from './supabase';
+import { calculateNights, parseDateString, toDateString } from './dateUtils';
 
 export async function syncRoomsWithSupabase(): Promise<Room[]> {
   const sbRooms = await fetchRoomsFromSupabase();
@@ -328,12 +334,12 @@ export async function syncRoomsWithSupabase(): Promise<Room[]> {
 export async function syncBlockedDatesWithSupabase(): Promise<BlockedDate[]> {
   const sbBlocked = await fetchBlockedDatesFromSupabase();
   if (sbBlocked && sbBlocked.length > 0) {
-    const mapped: BlockedDate[] = sbBlocked.map((row: any) => ({
-      id: row.id,
-      roomId: Number(row.room_id),
-      date: row.date,
-      reason: row.reason,
-      bookingId: row.booking_id ? Number(row.booking_id) : null,
+    const mapped = sbBlocked.map((b: any) => ({
+      id: b.id,
+      roomId: b.room_id,
+      date: b.date,
+      reason: b.reason || 'maintenance',
+      bookingId: b.booking_id,
     }));
     setItem(STORAGE_KEYS.blockedDates, mapped);
     return mapped;
@@ -352,6 +358,10 @@ export function getRoomById(id: number): Room | undefined {
 }
 
 export function getAvailableRooms(checkIn: string, checkOut: string, guests?: number): Room[] {
+  if (!checkIn || !checkOut) return [];
+  const nights = calculateNights(checkIn, checkOut);
+  if (nights < 1) return [];
+
   const rooms = getRooms();
   const blockedDates = getBlockedDates();
 
@@ -359,10 +369,10 @@ export function getAvailableRooms(checkIn: string, checkOut: string, guests?: nu
     if (room.status !== 'available') return false;
     if (guests && room.capacity < guests) return false;
 
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const start = parseDateString(checkIn);
+    const end = parseDateString(checkOut);
     for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toDateString(d);
       const isBlocked = blockedDates.some(
         (bd) => bd.roomId === room.id && bd.date === dateStr
       );
@@ -461,7 +471,35 @@ export function getBookingByReference(ref: string): Booking | undefined {
   return getBookings().find((b) => b.bookingReference === ref);
 }
 
-export function getBookingsByUser(userId: number): Booking[] {
+export async function fetchBookingByRef(ref: string): Promise<Booking | undefined> {
+  const sbBooking = await fetchBookingByReferenceFromSupabase(ref);
+  if (sbBooking) {
+    return {
+      id: sbBooking.id,
+      bookingReference: sbBooking.booking_reference,
+      userId: sbBooking.user_id,
+      roomId: sbBooking.room_id,
+      guestFirstName: sbBooking.guest_first_name,
+      guestLastName: sbBooking.guest_last_name,
+      guestEmail: sbBooking.guest_email,
+      guestPhone: sbBooking.guest_phone,
+      specialRequests: sbBooking.special_requests,
+      checkIn: sbBooking.check_in,
+      checkOut: sbBooking.check_out,
+      guestsCount: sbBooking.guests_count,
+      nights: sbBooking.nights,
+      subtotal: Number(sbBooking.subtotal),
+      taxAmount: Number(sbBooking.tax_amount),
+      totalAmount: Number(sbBooking.total_amount),
+      status: sbBooking.status as BookingStatus,
+      paymentStatus: sbBooking.payment_status,
+      createdAt: sbBooking.created_at,
+    };
+  }
+  return getBookingByReference(ref);
+}
+
+export function getBookingsByUser(userId: string): Booking[] {
   return getBookings().filter((b) => b.userId === userId);
 }
 
@@ -473,7 +511,63 @@ export function getBookingsByEmail(email: string): Booking[] {
   );
 }
 
-export function createBooking(data: {
+export async function fetchUserBookings(userId: string | null, email: string): Promise<Booking[]> {
+  const sbBookings = await fetchBookingsForUser(userId, email);
+  if (sbBookings && sbBookings.length > 0) {
+    return sbBookings.map((b: any) => ({
+      id: b.id,
+      bookingReference: b.booking_reference,
+      userId: b.user_id,
+      roomId: b.room_id,
+      guestFirstName: b.guest_first_name,
+      guestLastName: b.guest_last_name,
+      guestEmail: b.guest_email,
+      guestPhone: b.guest_phone,
+      specialRequests: b.special_requests,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestsCount: b.guests_count,
+      nights: b.nights,
+      subtotal: Number(b.subtotal),
+      taxAmount: Number(b.tax_amount),
+      totalAmount: Number(b.total_amount),
+      status: b.status as BookingStatus,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    }));
+  }
+  return getBookingsByEmail(email);
+}
+
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const sbBookings = await fetchBookingsFromSupabase();
+  if (sbBookings && sbBookings.length > 0) {
+    return sbBookings.map((b: any) => ({
+      id: b.id,
+      bookingReference: b.booking_reference,
+      userId: b.user_id,
+      roomId: b.room_id,
+      guestFirstName: b.guest_first_name,
+      guestLastName: b.guest_last_name,
+      guestEmail: b.guest_email,
+      guestPhone: b.guest_phone,
+      specialRequests: b.special_requests,
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guestsCount: b.guests_count,
+      nights: b.nights,
+      subtotal: Number(b.subtotal),
+      taxAmount: Number(b.tax_amount),
+      totalAmount: Number(b.total_amount),
+      status: b.status as BookingStatus,
+      paymentStatus: b.payment_status,
+      createdAt: b.created_at,
+    }));
+  }
+  return getBookings();
+}
+
+export async function createBooking(data: {
   roomId: number;
   checkIn: string;
   checkOut: string;
@@ -483,15 +577,17 @@ export function createBooking(data: {
   guestEmail: string;
   guestPhone?: string;
   specialRequests?: string;
-  userId?: number;
-}): Booking {
+  userId?: string | null;
+}): Promise<Booking> {
   const bookings = getBookings();
   const room = getRoomById(data.roomId);
   if (!room) throw new Error('Room not found');
 
-  const checkIn = new Date(data.checkIn);
-  const checkOut = new Date(data.checkOut);
-  const nights = Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+  const nights = calculateNights(data.checkIn, data.checkOut);
+  if (nights < 1) {
+    throw new Error('Invalid booking dates: stay must be for at least 1 night.');
+  }
+
   const subtotal = room.pricePerNight * nights;
   const taxAmount = subtotal * 0.1;
   const totalAmount = subtotal + taxAmount;
@@ -521,25 +617,58 @@ export function createBooking(data: {
     createdAt: new Date().toISOString(),
   };
 
+  // Sync to Supabase Database
+  try {
+    const sbCreated = await insertBookingToSupabase({
+      booking_reference: booking.bookingReference,
+      user_id: booking.userId,
+      room_id: booking.roomId,
+      guest_first_name: booking.guestFirstName,
+      guest_last_name: booking.guestLastName,
+      guest_email: booking.guestEmail,
+      guest_phone: booking.guestPhone,
+      special_requests: booking.specialRequests,
+      check_in: booking.checkIn,
+      check_out: booking.checkOut,
+      guests_count: booking.guestsCount,
+      nights: booking.nights,
+      subtotal: booking.subtotal,
+      tax_amount: booking.taxAmount,
+      total_amount: booking.totalAmount,
+      status: booking.status,
+      payment_status: booking.paymentStatus,
+    });
+    if (sbCreated && sbCreated.id) {
+      booking.id = sbCreated.id;
+    }
+  } catch (err) {
+    console.warn('Supabase create booking notice:', err);
+  }
+
   bookings.push(booking);
   setItem(STORAGE_KEYS.bookings, bookings);
 
   // Block dates
   const datesToBlock: string[] = [];
-  for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-    datesToBlock.push(d.toISOString().split('T')[0]);
+  const start = parseDateString(data.checkIn);
+  const end = parseDateString(data.checkOut);
+  for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+    datesToBlock.push(toDateString(d));
   }
   blockDates(data.roomId, datesToBlock, 'booking', booking.id);
 
   return booking;
 }
 
-export function updateBookingStatus(id: number, status: BookingStatus): Booking | null {
+export async function updateBookingStatus(id: number, status: BookingStatus): Promise<Booking | null> {
   const bookings = getBookings();
   const idx = bookings.findIndex((b) => b.id === id);
   if (idx === -1) return null;
   bookings[idx] = { ...bookings[idx], status };
   setItem(STORAGE_KEYS.bookings, bookings);
+
+  // Sync to Supabase Database
+  await updateBookingStatusInSupabase(id, status).catch((err) => console.warn('Supabase update notice:', err));
 
   if (status === 'cancelled') {
     const booking = bookings[idx];
