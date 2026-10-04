@@ -60,32 +60,39 @@ export interface CreateSnapTokenParams {
 export async function createMidtransSnapToken(
   params: CreateSnapTokenParams
 ): Promise<{ token: string; redirectUrl?: string }> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://esolildgbjbnivsdtqnd.supabase.co';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  // 1. Try Supabase Edge Function if configured
-  if (supabaseUrl && !supabaseUrl.includes('your-supabase-url')) {
-    try {
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/create-midtrans-snap`;
-      const response = await fetch(edgeFunctionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-        },
-        body: JSON.stringify(params),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token) {
-          return { token: data.token, redirectUrl: data.redirect_url };
-        }
-      }
-    } catch (e) {
-      console.warn('Edge Function create-midtrans-snap notice:', e);
-    }
+  if (!supabaseUrl || supabaseUrl.includes('your-supabase-url')) {
+    throw new Error("Supabase URL is not configured. Please ensure VITE_SUPABASE_URL is set.");
   }
 
+  const edgeFunctionUrl = `${supabaseUrl}/functions/v1/create-midtrans-snap`;
   
-  throw new Error("Unable to create transaction: Supabase Edge Function URL is missing. Please ensure VITE_SUPABASE_URL is configured.");
+  let response: Response;
+  try {
+    response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey || '',
+      },
+      body: JSON.stringify(params),
+    });
+  } catch (networkErr: any) {
+    throw new Error(`Network error connecting to payment service: ${networkErr.message || networkErr}`);
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const errorMsg = data?.error || data?.message || `Payment service returned status ${response.status}`;
+    throw new Error(errorMsg);
+  }
+
+  if (data?.token) {
+    return { token: data.token, redirectUrl: data.redirect_url };
+  }
+
+  throw new Error("Payment service did not return a valid transaction token.");
 }
