@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { fetchAllBookings, getRoomById, updateBookingStatus, initializeData } from '@/lib/data';
+import { getBookings, getRoomById, updateBookingStatus, initializeData } from '@/lib/data';
 import type { Booking, BookingStatus } from '@/lib/data';
-import { formatCurrency } from '@/lib/utils';
 import AdminLayout from '@/components/AdminLayout';
 
 export default function AdminBookings() {
@@ -14,7 +13,7 @@ export default function AdminBookings() {
 
   useEffect(() => {
     initializeData();
-    fetchAllBookings().then(setBookings);
+    setBookings(getBookings());
   }, []);
 
   const filtered = bookings.filter((b) => {
@@ -30,10 +29,9 @@ export default function AdminBookings() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const handleStatusChange = async (id: number, status: BookingStatus) => {
-    await updateBookingStatus(id, status);
-    const updated = await fetchAllBookings();
-    setBookings(updated);
+  const handleStatusChange = (id: number, status: BookingStatus) => {
+    updateBookingStatus(id, status);
+    setBookings(getBookings());
   };
 
   const statusBadge = (status: string) => {
@@ -137,7 +135,7 @@ export default function AdminBookings() {
                       </td>
                       <td className="px-4 py-3">{statusBadge(b.status)}</td>
                       <td className="px-4 py-3 text-sm font-medium text-[#1a1917]">
-                        {formatCurrency(b.totalAmount)}
+                        ${b.totalAmount.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="relative group inline-block">

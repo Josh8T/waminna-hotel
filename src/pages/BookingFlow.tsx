@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
+import { formatCurrency } from "@/lib/utils";
+import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, AlertTriangle } from 'lucide-react';
+import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, QrCode, Building2, ShieldCheck } from 'lucide-react';
 import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
-import { validateStayDates } from '@/lib/dateUtils';
+import { createMidtransSnapToken } from '@/lib/midtrans';
 import Header from '@/components/Header';
-import { useThemeLanguage } from '@/context/ThemeLanguageContext';
-import { useAuth } from '@/hooks/useAuth';
-import { formatCurrency } from '@/lib/utils';
 
 export default function BookingFlow() {
-  const { t } = useThemeLanguage();
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const roomId = parseInt(searchParams.get('roomId') || '0');
@@ -20,34 +16,23 @@ export default function BookingFlow() {
 
   const [step, setStep] = useState(1);
   const [selectedAddons] = useState<string[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'qris' | 'va' | 'card'>('qris');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     specialRequests: '',
-    cardNumber: '',
-    expiry: '',
-    cvc: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        firstName: prev.firstName || user.firstName || '',
-        lastName: prev.lastName || user.lastName || '',
-        email: prev.email || user.email || '',
-        phone: prev.phone || user.phone || '',
-      }));
-    }
-  }, [user]);
-
   const room = getRoomById(roomId);
-  const dateValidation = validateStayDates(checkIn, checkOut);
-  const nights = dateValidation.isValid ? dateValidation.nights : 0;
+  const nights = (() => {
+    if (!checkIn || !checkOut) return 0;
+    const s = new Date(checkIn), e = new Date(checkOut);
+    return Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+  })();
 
   const addonTotal = selectedAddons.reduce((acc, id) => {
     const addon = HOTEL_ADDONS.find((a) => a.id === id);
@@ -58,40 +43,15 @@ export default function BookingFlow() {
   const subtotal = room ? room.pricePerNight * nights : 0;
   const tax = (subtotal + addonTotal) * 0.1;
   const total = subtotal + addonTotal + tax;
+  const totalIdr = total;
 
-  if (!room || !checkIn || !checkOut || !dateValidation.isValid) {
-    const errorMsg = dateValidation.isValid
-      ? t('Invalid room or booking parameters.', 'Kamar atau parameter pemesanan tidak valid.')
-      : t(dateValidation.messageEn, dateValidation.messageId);
-
+  if (!room || !checkIn || !checkOut) {
     return (
-      <div className="min-h-screen bg-[#fdf8f5] dark:bg-[#191816] text-[#1b1c1a] dark:text-[#F7F5F2]">
-        <Header />
-        <div className="pt-28 pb-16 px-4 flex justify-center items-center">
-          <div className="max-w-md w-full bg-white dark:bg-[#242320] rounded-xl border border-amber-300 dark:border-amber-800/60 p-6 text-center shadow-lg">
-            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-            <h2 className="text-xl font-display font-semibold mb-2 text-[#1c1b19] dark:text-[#F7F5F2]">
-              {t('Invalid Stay Dates', 'Tanggal Menginap Tidak Valid')}
-            </h2>
-            <p className="text-sm text-[#827D75] dark:text-[#ded9d6] mb-6">
-              {errorMsg}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <button
-                onClick={() => navigate(room ? `/rooms/${room.id}` : '/rooms')}
-                className="px-5 py-2.5 bg-[#C5A059] hover:bg-[#b08d49] text-[#1C1C19] font-medium text-xs uppercase tracking-wider rounded transition-colors"
-              >
-                {t('Select Valid Dates', 'Pilih Tanggal yang Valid')}
-              </button>
-              <button
-                onClick={() => navigate('/rooms')}
-                className="px-5 py-2.5 border border-[#827D75]/30 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs uppercase tracking-wider rounded transition-colors"
-              >
-                {t('Browse Catalog', 'Lihat Katalog')}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-warm-bg pt-24 text-center">
+        <p className="text-lg text-[#5c5a54]">Invalid booking parameters</p>
+        <button onClick={() => navigate('/rooms')} className="text-brand hover:underline mt-2">
+          Browse rooms
+        </button>
       </div>
     );
   }
@@ -103,9 +63,6 @@ export default function BookingFlow() {
       if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
       if (!formData.email.trim()) newErrors.email = 'Email is required';
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
-      if (!formData.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
-      if (!formData.expiry.trim()) newErrors.expiry = 'Expiry date is required';
-      if (!formData.cvc.trim()) newErrors.cvc = 'CVC is required';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -120,30 +77,91 @@ export default function BookingFlow() {
   };
 
   const handleSubmit = async () => {
-    const validation = validateStayDates(checkIn, checkOut);
-    if (!validation.isValid) {
-      setErrors({ submit: t(validation.messageEn, validation.messageId) });
-      return;
-    }
-
     setIsSubmitting(true);
+    setErrors({});
+
     try {
-      const booking = await createBooking({
-        roomId,
-        checkIn,
-        checkOut,
-        guestsCount: parseInt(guests),
-        guestFirstName: formData.firstName,
-        guestLastName: formData.lastName,
-        guestEmail: formData.email,
-        guestPhone: formData.phone || undefined,
-        specialRequests: formData.specialRequests || undefined,
-        userId: user?.id || null,
+      // 1. Generate unique transaction order ID for Midtrans
+      const tempRefNum = Math.floor(10000 + Math.random() * 90000);
+      const bookingRef = `BK-${tempRefNum}`;
+      const orderId = `${bookingRef}-${Date.now().toString().slice(-4)}`;
+
+      // 2. Request Snap Token from Midtrans Sandbox
+      const snapResponse = await createMidtransSnapToken({
+        orderId,
+        grossAmountIdr: totalIdr,
+        customerDetails: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone || '',
+        },
+        itemDetails: [
+          {
+            id: `room-${roomId}`,
+            price: totalIdr,
+            quantity: 1,
+            name: `${room.name} (${nights} night${nights > 1 ? 's' : ''})`,
+          },
+        ],
       });
-      navigate(`/booking-confirmation?ref=${booking.bookingReference}`);
-    } catch {
-      setErrors({ submit: 'Failed to create booking. Please try again.' });
-    } finally {
+
+      if (!snapResponse?.token) {
+        throw new Error('Unable to generate payment token from Midtrans.');
+      }
+
+      // 3. Trigger Midtrans Snap.js Modal
+      if (window.snap && typeof window.snap.pay === 'function') {
+        window.snap.pay(snapResponse.token, {
+          onSuccess: (result: unknown) => {
+            console.log('Midtrans Payment Success:', result);
+            const booking = createBooking({
+              roomId,
+              checkIn,
+              checkOut,
+              guestsCount: parseInt(guests),
+              guestFirstName: formData.firstName,
+              guestLastName: formData.lastName,
+              guestEmail: formData.email,
+              guestPhone: formData.phone || undefined,
+              specialRequests: formData.specialRequests || undefined,
+            });
+            navigate(`/booking-confirmation?ref=${booking.bookingReference}&email=${encodeURIComponent(formData.email)}`);
+          },
+          onPending: (result: unknown) => {
+            console.log('Midtrans Payment Pending:', result);
+            const booking = createBooking({
+              roomId,
+              checkIn,
+              checkOut,
+              guestsCount: parseInt(guests),
+              guestFirstName: formData.firstName,
+              guestLastName: formData.lastName,
+              guestEmail: formData.email,
+              guestPhone: formData.phone || undefined,
+              specialRequests: formData.specialRequests || undefined,
+            });
+            navigate(`/booking-confirmation?ref=${booking.bookingReference}&email=${encodeURIComponent(formData.email)}`);
+          },
+          onError: (result: unknown) => {
+            console.error('Midtrans Payment Error:', result);
+            setErrors({ submit: 'Payment failed or was cancelled. Please try again or select another payment channel.' });
+            setIsSubmitting(false);
+          },
+          onClose: () => {
+            setIsSubmitting(false);
+          },
+        });
+      } else if (snapResponse.redirectUrl) {
+        // Fallback for full page redirect if popup is blocked
+        window.location.href = snapResponse.redirectUrl;
+      } else {
+        throw new Error('Midtrans Snap SDK is not loaded. Please reload and try again.');
+      }
+    } catch (err: unknown) {
+      console.error('Midtrans initialization failure:', err);
+      const message = err instanceof Error ? err.message : 'Failed to initialize payment.';
+      setErrors({ submit: message });
       setIsSubmitting(false);
     }
   };
@@ -178,13 +196,29 @@ export default function BookingFlow() {
             </div>
             
             {/* Step Indicator */}
-            <div className="hidden sm:flex items-center gap-3 font-sans font-semibold text-xs">
-              <span className={`px-3 py-1 rounded-full border ${step === 1 ? 'bg-[#414930] text-white border-[#414930]' : 'bg-white text-[#76786e] border-[#e8e6e1]'}`}>
-                1. Review & Add-ons
-              </span>
-              <span className={`px-3 py-1 rounded-full border ${step === 2 ? 'bg-[#414930] text-white border-[#414930]' : 'bg-white text-[#76786e] border-[#e8e6e1]'}`}>
-                2. Guest & Payment
-              </span>
+            <div className="flex items-center gap-2 sm:gap-3 font-sans font-semibold text-xs">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className={`px-3 py-1.5 rounded-full border transition-all ${
+                  step === 1
+                    ? 'bg-[#414930] text-white border-[#414930] shadow-sm'
+                    : 'bg-white text-[#76786e] border-[#e8e6e1] hover:border-[#414930]'
+                }`}
+              >
+                1. Review &amp; Stay
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className={`px-3 py-1.5 rounded-full border transition-all ${
+                  step === 2
+                    ? 'bg-[#414930] text-white border-[#414930] shadow-sm'
+                    : 'bg-white text-[#76786e] border-[#e8e6e1] hover:border-[#414930]'
+                }`}
+              >
+                2. Guest &amp; Midtrans Payment
+              </button>
             </div>
           </div>
         </div>
@@ -225,9 +259,41 @@ export default function BookingFlow() {
                   <p className="text-sm font-medium">{guests}</p>
                 </div>
               </div>
-              <p className="text-sm text-[#5c5a54] text-center">
+              <p className="text-sm text-[#5c5a54] text-center mb-6">
                 {nights} night{nights > 1 ? 's' : ''} stay
               </p>
+
+              {/* Step 1 Payment Preview Callout */}
+              <div className="pt-5 border-t border-warm-border">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-brand" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#1a1917]">
+                      Payment Methods (Midtrans Gateway)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Bank Indonesia Regulated
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-lg border border-warm-border bg-[#fbf9f6]">
+                    <QrCode className="w-5 h-5 text-brand mx-auto mb-1" />
+                    <span className="text-xs font-semibold text-[#1a1917] block">QRIS</span>
+                    <span className="text-[10px] text-[#8a8984]">GoPay, BCA, OVO</span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-warm-border bg-[#fbf9f6]">
+                    <Building2 className="w-5 h-5 text-brand mx-auto mb-1" />
+                    <span className="text-xs font-semibold text-[#1a1917] block">Virtual Account</span>
+                    <span className="text-[10px] text-[#8a8984]">BCA, Mandiri, BRI</span>
+                  </div>
+                  <div className="p-3 rounded-lg border border-warm-border bg-[#fbf9f6]">
+                    <CreditCard className="w-5 h-5 text-brand mx-auto mb-1" />
+                    <span className="text-xs font-semibold text-[#1a1917] block">Credit Cards</span>
+                    <span className="text-[10px] text-[#8a8984]">Visa, Mastercard, JCB</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -307,64 +373,118 @@ export default function BookingFlow() {
                 </div>
               </div>
 
-              {/* Mock Payment */}
+              {/* Payment Method Selection (PCI-DSS & Bank Indonesia Compliant) */}
               <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <CreditCard className="w-4 h-4 text-brand" />
-                  <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">
-                    Payment Information
-                  </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-brand" />
+                    <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">
+                      Payment Method (Midtrans Gateway)
+                    </h2>
+                  </div>
+                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    Bank Indonesia Regulated
+                  </span>
                 </div>
-                <div className="mb-4">
-                  <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                    Card Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="XXXX XXXX XXXX XXXX"
-                    value={formData.cardNumber}
-                    onChange={(e) => updateField('cardNumber', e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19))}
-                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                      errors.cardNumber ? 'border-red-400' : 'border-warm-border'
+
+                <p className="text-xs text-[#5c5a54] mb-4">
+                  Select your preferred payment method. Payment is processed securely via Midtrans Snap.
+                </p>
+
+                <div className="space-y-3 mb-6">
+                  {/* QRIS */}
+                  <label
+                    onClick={() => setSelectedPaymentMethod('qris')}
+                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'qris'
+                        ? 'border-brand bg-brand-light/20 ring-1 ring-brand/30'
+                        : 'border-warm-border hover:border-warm-border-strong bg-white'
                     }`}
-                  />
-                  {errors.cardNumber && <p className="text-xs text-red-500 mt-1">{errors.cardNumber}</p>}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                      Expiry (MM/YY)
-                    </label>
+                  >
                     <input
-                      type="text"
-                      placeholder="MM/YY"
-                      value={formData.expiry}
-                      onChange={(e) => updateField('expiry', e.target.value.slice(0, 5))}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                        errors.expiry ? 'border-red-400' : 'border-warm-border'
-                      }`}
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPaymentMethod === 'qris'}
+                      onChange={() => setSelectedPaymentMethod('qris')}
+                      className="mt-1 text-brand focus:ring-brand"
                     />
-                    {errors.expiry && <p className="text-xs text-red-500 mt-1">{errors.expiry}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                      CVC
-                    </label>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a1917] flex items-center gap-1.5">
+                          <QrCode className="w-4 h-4 text-brand" /> QRIS Instant Pay
+                        </span>
+                        <span className="text-[10px] uppercase font-semibold text-[#8a8984]">Instant</span>
+                      </div>
+                      <p className="text-xs text-[#8a8984] mt-0.5">
+                        GoPay, BCA Mobile, OVO, Dana, LinkAja, ShopeePay
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Virtual Account */}
+                  <label
+                    onClick={() => setSelectedPaymentMethod('va')}
+                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'va'
+                        ? 'border-brand bg-brand-light/20 ring-1 ring-brand/30'
+                        : 'border-warm-border hover:border-warm-border-strong bg-white'
+                    }`}
+                  >
                     <input
-                      type="text"
-                      placeholder="XXX"
-                      value={formData.cvc}
-                      onChange={(e) => updateField('cvc', e.target.value.replace(/\D/g, '').slice(0, 3))}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                        errors.cvc ? 'border-red-400' : 'border-warm-border'
-                      }`}
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPaymentMethod === 'va'}
+                      onChange={() => setSelectedPaymentMethod('va')}
+                      className="mt-1 text-brand focus:ring-brand"
                     />
-                    {errors.cvc && <p className="text-xs text-red-500 mt-1">{errors.cvc}</p>}
-                  </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a1917] flex items-center gap-1.5">
+                          <Building2 className="w-4 h-4 text-brand" /> Virtual Account / Bank Transfer
+                        </span>
+                        <span className="text-[10px] uppercase font-semibold text-[#8a8984]">Auto-Check</span>
+                      </div>
+                      <p className="text-xs text-[#8a8984] mt-0.5">
+                        BCA, Bank Mandiri, BNI, BRI, Permata Bank
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Credit / Debit Card */}
+                  <label
+                    onClick={() => setSelectedPaymentMethod('card')}
+                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
+                      selectedPaymentMethod === 'card'
+                        ? 'border-brand bg-brand-light/20 ring-1 ring-brand/30'
+                        : 'border-warm-border hover:border-warm-border-strong bg-white'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPaymentMethod === 'card'}
+                      onChange={() => setSelectedPaymentMethod('card')}
+                      className="mt-1 text-brand focus:ring-brand"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-[#1a1917] flex items-center gap-1.5">
+                          <CreditCard className="w-4 h-4 text-brand" /> Credit &amp; Debit Card (3D Secure)
+                        </span>
+                        <span className="text-[10px] uppercase font-semibold text-[#8a8984]">PCI-DSS</span>
+                      </div>
+                      <p className="text-xs text-[#8a8984] mt-0.5">
+                        Visa, Mastercard, JCB, American Express
+                      </p>
+                    </div>
+                  </label>
                 </div>
-                <div className="flex items-center gap-2 mt-4 text-[#8a8984]">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span className="text-xs">Secure payment - Mock payment for demo</span>
+
+                <div className="p-3 bg-warm-secondary/60 rounded-lg border border-warm-border flex items-start gap-2.5 text-[#5c5a54]">
+                  <Lock className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
+                  <p className="text-xs leading-relaxed">
+                    <strong>End-to-End Encrypted:</strong> Your payment is handled through Midtrans PCI-DSS Level 1 certified gateway. Waminna Hotel never receives or stores your card details.
+                  </p>
                 </div>
               </div>
 
@@ -399,7 +519,7 @@ export default function BookingFlow() {
               {isSubmitting ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : step === 2 ? (
-                'Complete Booking'
+                'Pay with Midtrans'
               ) : (
                 <>
                   Continue <ChevronRight className="w-4 h-4" />
@@ -438,9 +558,14 @@ export default function BookingFlow() {
                 <span className="text-[#5c5a54]">Taxes (10%)</span>
                 <span className="text-[#1a1917]">{formatCurrency(tax)}</span>
               </div>
-              <div className="flex justify-between font-semibold text-base pt-2 border-t border-warm-border">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+              <div className="pt-2 border-t border-warm-border">
+                <div className="flex justify-between font-semibold text-base">
+                  <span>Total</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                <div className="text-right text-xs text-[#8a8984] mt-0.5 font-medium">
+                  ≈ {formatCurrency(totalIdr)}
+                </div>
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-warm-border">
@@ -448,7 +573,7 @@ export default function BookingFlow() {
                 <Shield className="w-4 h-4 text-brand mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-[#1a1917]">Cancellation Policy</p>
-                  <p className="text-[11px] text-[#8a8984]">All confirmed bookings are non-cancellable and non-refundable</p>
+                  <p className="text-[11px] text-[#8a8984]">Free cancellation up to 3 days before check-in</p>
                 </div>
               </div>
             </div>

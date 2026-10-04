@@ -5,10 +5,17 @@ import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/',
+  base: '/waminna-hotel/',
   plugins: [inspectAttr(), react()],
   server: {
     port: 3000,
+    proxy: {
+      "/api/midtrans": {
+        target: "https://app.sandbox.midtrans.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/midtrans/, ""),
+      }
+    },
   },
   resolve: {
     alias: {

@@ -161,12 +161,30 @@ CREATE POLICY "Staff Manage Blocked Dates" ON public.blocked_dates FOR ALL
 CREATE POLICY "Public Insert Bookings" ON public.bookings FOR INSERT WITH CHECK (true);
 CREATE POLICY "Read Own Bookings" ON public.bookings FOR SELECT
   USING (
-    auth.uid() IS NULL -- allow lookup by reference for unauthenticated guests
-    OR auth.uid() = user_id
+    (auth.uid() IS NOT NULL AND auth.uid() = user_id)
     OR public.is_staff_or_owner()
   );
 CREATE POLICY "Staff Update Bookings" ON public.bookings FOR UPDATE
   USING (public.is_staff_or_owner());
+
+-- Secure guest lookup RPC (used by unauthenticated guests checking their reservation)
+CREATE OR REPLACE FUNCTION public.get_booking_by_reference(
+  p_booking_reference TEXT,
+  p_guest_email TEXT
+)
+RETURNS SETOF public.bookings
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT * FROM public.bookings
+  WHERE booking_reference = p_booking_reference
+    AND LOWER(guest_email) = LOWER(p_guest_email)
+  LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_booking_by_reference(TEXT, TEXT) TO anon, authenticated;
 
 -- ---- Profiles: Users see own profile; staff see all ----
 CREATE POLICY "Read Own Profile" ON public.profiles FOR SELECT
@@ -178,24 +196,60 @@ CREATE POLICY "User Update Own Profile" ON public.profiles FOR UPDATE
 CREATE POLICY "Owner Update Any Profile" ON public.profiles FOR UPDATE
   USING (public.is_owner());
 
+-- Trigger to prevent privilege escalation: only owners can modify roles
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF NOT public.is_owner() THEN
+      RAISE EXCEPTION 'Unauthorized: Only owners can modify user roles';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_protect_profile_role ON public.profiles;
+CREATE TRIGGER trigger_protect_profile_role
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_profile_role();
+
 -- ========================================================
 -- AUTO-PROFILE TRIGGER
 -- Creates a profiles row automatically when a user signs up via Supabase Auth.
+-- Normalizes OAuth metadata (Google, Apple) and forces non-privileged 'user' role.
 -- ========================================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_first_name TEXT;
+  v_last_name TEXT;
 BEGIN
+  v_first_name := COALESCE(
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->'name'->>'firstName',
+    SPLIT_PART(NEW.raw_user_meta_data->>'full_name', ' ', 1),
+    SPLIT_PART(NEW.raw_user_meta_data->>'name', ' ', 1),
+    ''
+  );
+
+  v_last_name := COALESCE(
+    NEW.raw_user_meta_data->>'last_name',
+    NEW.raw_user_meta_data->'name'->>'lastName',
+    NULLIF(SUBSTRING(NEW.raw_user_meta_data->>'full_name' FROM POSITION(' ' IN NEW.raw_user_meta_data->>'full_name') + 1), ''),
+    NULLIF(SUBSTRING(NEW.raw_user_meta_data->>'name' FROM POSITION(' ' IN NEW.raw_user_meta_data->>'name') + 1), ''),
+    ''
+  );
+
   INSERT INTO public.profiles (id, email, first_name, last_name, role)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'first_name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
-    COALESCE(
-      (NEW.raw_user_meta_data->>'role')::public.user_role,
-      'user'
-    )
+    v_first_name,
+    v_last_name,
+    'user'::public.user_role
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -205,17 +259,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- ========================================================
--- SCHEMA & TABLE PERMISSIONS
--- Grants API access for anon (public) and authenticated users.
--- ========================================================
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated;
 

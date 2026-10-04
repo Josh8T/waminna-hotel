@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle2, MessageCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 
@@ -85,24 +85,9 @@ export default function Contact() {
                   <div>
                     <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Phone & WhatsApp', 'Telepon & WhatsApp')}</h3>
                     <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1">
-                      <a
-                        href="tel:+6282227891010"
-                        className="hover:text-[#C5A059] transition-colors font-medium"
-                      >
-                        +62 822 2789 1010
-                      </a>
+                      Direct: +62 21 5555 8888<br />
+                      Reservations: +62 21 5555 8889
                     </p>
-                    <div className="mt-1.5">
-                      <a
-                        href="https://wa.me/6282227891010"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>{t('Chat on WhatsApp', 'Hubungi via WhatsApp')}</span>
-                      </a>
-                    </div>
                   </div>
                 </div>
 
@@ -113,14 +98,7 @@ export default function Contact() {
                   <div>
                     <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Email Inquiry', 'Pertanyaan Email')}</h3>
                     <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1">
-                      {t('General', 'Umum')}: <a href="mailto:info@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">info@waminnahotel.com</a><br />
-                      {t('Reservations', 'Reservasi')}: <a href="mailto:reservation@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">reservation@waminnahotel.com</a>
-                    </p>
-                    <p className="text-[11px] text-[#827D75]/80 dark:text-[#ded9d6]/70 mt-1.5 italic">
-                      {t(
-                        'Note: Emails from reservation@waminnahotel.com are automated.',
-                        'Catatan: Email dari reservation@waminnahotel.com dikirim otomatis.'
-                      )}
+                      info@waminnahotel.com<br />
                     </p>
                   </div>
                 </div>
@@ -130,11 +108,10 @@ export default function Contact() {
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Check-in & Reception', 'Masuk & Resepsionis')}</h3>
+                    <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Check-in / Check-out', 'Masuk / Keluar')}</h3>
                     <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1">
-                      {t('Check-in: From 2:00 PM', 'Masuk: Mulai pukul 14:00 WIB')}<br />
-                      {t('Check-out: By 12:00 noon', 'Keluar: Maksimal pukul 12:00 WIB (Siang)')}<br />
-                      <span className="text-[#C5A059] font-medium">{t('Reception Desk: 24 Hours', 'Meja Resepsionis: 24 Jam')}</span>
+                      {t('Check-in: 3:00 PM onwards', 'Masuk: Mulai pukul 15:00 WIB')}<br />
+                      {t('Check-out: 12:00 PM (Noon)', 'Keluar: Pukul 12:00 WIB (Siang)')}
                     </p>
                   </div>
                 </div>
@@ -252,6 +229,7 @@ export default function Contact() {
                         >
                           <option value="General Inquiry">{t('General Inquiry', 'Pertanyaan Umum')}</option>
                           <option value="Room Reservation">{t('Room Reservation', 'Reservasi Kamar')}</option>
+                          <option value="Ferry Terminal Transport">{t('Ferry Terminal Transport', 'Penjemputan Ferry Terminal')}</option>
                           <option value="Feedback">{t('Guest Feedback', 'Umpan Balik Tamu')}</option>
                         </select>
                       </div>
