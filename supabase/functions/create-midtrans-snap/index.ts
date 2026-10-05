@@ -48,17 +48,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Determine initial environment
-    const isProductionEnv = Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true";
-    const sandboxUrl = "https://app.sandbox.midtrans.com/snap/v1/transactions";
-    const productionUrl = "https://app.midtrans.com/snap/v1/transactions";
-
-    // If key starts with SB-, definitely sandbox. If explicitly production, try production first.
-    const tryUrls = serverKey.startsWith("SB-")
-      ? [sandboxUrl]
-      : isProductionEnv
-        ? [productionUrl, sandboxUrl]
-        : [sandboxUrl, productionUrl];
+    // Explicitly enforce Sandbox unless MIDTRANS_IS_PRODUCTION is strictly "true"
+    const isProduction = Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true";
+    const snapUrl = isProduction
+      ? "https://app.midtrans.com/snap/v1/transactions"
+      : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
     const authHeader = `Basic ${btoa(`${serverKey}:`)}`;
 
@@ -86,57 +80,45 @@ Deno.serve(async (req: Request) => {
       ],
     };
 
-    let lastData: any = null;
-    let lastStatus = 500;
+    const midtransRes = await fetch(snapUrl, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+      },
+      body: JSON.stringify(payload),
+    });
 
-    for (const snapUrl of tryUrls) {
-      const midtransRes = await fetch(snapUrl, {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-        },
-        body: JSON.stringify(payload),
-      });
+    const status = midtransRes.status;
+    const data = await midtransRes.json().catch(() => null);
 
-      lastStatus = midtransRes.status;
-      lastData = await midtransRes.json().catch(() => null);
-
-      if (midtransRes.ok && lastData?.token) {
-        return new Response(
-          JSON.stringify({
-            token: lastData.token,
-            redirect_url: lastData.redirect_url,
-            isProduction: snapUrl === productionUrl,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // If not 401, don't retry other URL since auth wasn't the issue
-      if (lastStatus !== 401) {
-        break;
-      }
+    if (midtransRes.ok && data?.token) {
+      return new Response(
+        JSON.stringify({
+          token: data.token,
+          redirect_url: data.redirect_url,
+          environment: isProduction ? "production" : "sandbox",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Extract human-friendly error message from Midtrans
-    let errorMessage = "Midtrans payment creation failed";
-    if (Array.isArray(lastData?.error_messages)) {
-      errorMessage = lastData.error_messages.join(", ");
-    } else if (typeof lastData?.status_message === "string") {
-      errorMessage = lastData.status_message;
-    } else if (typeof lastData?.error === "string") {
-      if (lastData.error === "Unauthorized" || lastStatus === 401) {
-        errorMessage = `Midtrans Unauthorized (401): The Server Key (${serverKey.slice(0, 10)}...) was rejected by Midtrans. Please verify you copied the active Server Key from Midtrans Settings > Access Keys.`;
-      } else {
-        errorMessage = lastData.error;
-      }
+    // Clear human-friendly error extraction
+    let errorMessage = "Midtrans Sandbox payment creation failed";
+    if (status === 401) {
+      errorMessage = "Midtrans Sandbox (401 Unauthorized): The Sandbox Server Key was not accepted by Midtrans Sandbox. Please verify the account activation or regenerate the key in dashboard.sandbox.midtrans.com.";
+    } else if (Array.isArray(data?.error_messages)) {
+      errorMessage = data.error_messages.join(", ");
+    } else if (typeof data?.status_message === "string") {
+      errorMessage = data.status_message;
+    } else if (typeof data?.error === "string") {
+      errorMessage = data.error;
     }
 
     return new Response(
-      JSON.stringify({ error: errorMessage, details: lastData, status: lastStatus }),
-      { status: lastStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: errorMessage, details: data, status }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     return new Response(
