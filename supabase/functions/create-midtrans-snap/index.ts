@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Explicitly enforce Sandbox unless MIDTRANS_IS_PRODUCTION is strictly "true"
+    // Enforce Sandbox by default unless MIDTRANS_IS_PRODUCTION is strictly "true"
     const isProduction = Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true";
     const snapUrl = isProduction
       ? "https://app.midtrans.com/snap/v1/transactions"
@@ -105,9 +105,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // Clear human-friendly error extraction
-    let errorMessage = "Midtrans Sandbox payment creation failed";
+    let errorMessage = `Midtrans ${isProduction ? "Production" : "Sandbox"} payment creation failed`;
     if (status === 401) {
-      errorMessage = "Midtrans Sandbox (401 Unauthorized): The Sandbox Server Key was not accepted by Midtrans Sandbox. Please verify the account activation or regenerate the key in dashboard.sandbox.midtrans.com.";
+      errorMessage = isProduction
+        ? "Midtrans Production (401 Unauthorized): The Production Server Key was rejected. Please ensure the MIDTRANS_SERVER_KEY in Supabase secrets matches the Server Key in dashboard.midtrans.com."
+        : "Midtrans Sandbox (401 Unauthorized): The Sandbox Server Key was not accepted by Midtrans Sandbox. Please verify the account activation or regenerate the key in dashboard.sandbox.midtrans.com.";
     } else if (Array.isArray(data?.error_messages)) {
       errorMessage = data.error_messages.join(", ");
     } else if (typeof data?.status_message === "string") {

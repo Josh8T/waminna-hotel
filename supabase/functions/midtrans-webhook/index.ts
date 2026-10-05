@@ -29,8 +29,9 @@ serve(async (req: Request) => {
       fraud_status,
     } = notification;
 
-    const serverKey = Deno.env.get("MIDTRANS_SERVER_KEY");
-    if (!serverKey) throw new Error("Missing MIDTRANS_SERVER_KEY");
+    const rawServerKey = Deno.env.get("MIDTRANS_SERVER_KEY");
+    if (!rawServerKey) throw new Error("Missing MIDTRANS_SERVER_KEY");
+    const serverKey = rawServerKey.trim().replace(/^["']|["']$/g, "");
 
     // 1. Verify SHA-512 signature
     const expectedSignature = await sha512(`${order_id}${status_code}${gross_amount}${serverKey}`);
