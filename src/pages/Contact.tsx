@@ -113,14 +113,7 @@ export default function Contact() {
                   <div>
                     <h3 className="text-sm font-semibold text-[#1c1b19] dark:text-[#F7F5F2]">{t('Email Inquiry', 'Pertanyaan Email')}</h3>
                     <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1">
-                      {t('General', 'Umum')}: <a href="mailto:info@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">info@waminnahotel.com</a><br />
-                      {t('Reservations', 'Reservasi')}: <a href="mailto:reservation@waminnahotel.com" className="hover:text-[#C5A059] transition-colors">reservation@waminnahotel.com</a>
-                    </p>
-                    <p className="text-[11px] text-[#827D75]/80 dark:text-[#ded9d6]/70 mt-1.5 italic">
-                      {t(
-                        'Note: Emails from reservation@waminnahotel.com are automated.',
-                        'Catatan: Email dari reservation@waminnahotel.com dikirim otomatis.'
-                      )}
+                      <a href="mailto:info@waminnahotel.com" className="hover:text-[#C5A059] transition-colors font-medium">info@waminnahotel.com</a>
                     </p>
                   </div>
                 </div>
@@ -162,10 +155,10 @@ export default function Contact() {
             </div>
 
             {/* Inquiry Form */}
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-[#242320] rounded-xl p-6 sm:p-10 shadow-sm border border-[#e8e6e1] dark:border-[#30312f]">
+            <div className="lg:col-span-2 flex flex-col">
+              <div className="bg-white dark:bg-[#242320] rounded-xl p-6 sm:p-10 shadow-sm border border-[#e8e6e1] dark:border-[#30312f] h-full flex flex-col">
                 {submitted ? (
-                  <div className="text-center py-12 space-y-4">
+                  <div className="text-center py-12 space-y-4 my-auto">
                     <CheckCircle2 className="w-16 h-16 text-[#C5A059] mx-auto" />
                     <h2 className="text-2xl font-display font-normal text-[#1c1b19] dark:text-[#F7F5F2]">
                       {t('Message Sent Successfully', 'Pesan Berhasil Terkirim')}
@@ -187,106 +180,110 @@ export default function Contact() {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <h2 className="text-2xl font-display text-[#1c1b19] dark:text-[#F7F5F2] font-normal">
-                        {t('Send Us a Message', 'Kirim Pesan Kepada Kami')}
-                      </h2>
-                      <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1 font-sans">
-                        {t('Fill in the form below and we will get back to you promptly.', 'Isi formulir di bawah ini dan kami akan segera membalas Anda.')}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between gap-6">
+                    <div className="space-y-6 flex-1 flex flex-col">
                       <div>
+                        <h2 className="text-2xl font-display text-[#1c1b19] dark:text-[#F7F5F2] font-normal">
+                          {t('Send Us a Message', 'Kirim Pesan Kepada Kami')}
+                        </h2>
+                        <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mt-1 font-sans">
+                          {t('Fill in the form below and we will get back to you promptly.', 'Isi formulir di bawah ini dan kami akan segera membalas Anda.')}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
+                            {t('Your Full Name', 'Nama Lengkap')} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Jane Doe"
+                            className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
+                            {t('Email Address', 'Alamat Email')} <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="jane@example.com"
+                            className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
+                            {t('Phone Number (Optional)', 'Nomor Telepon (Opsional)')}
+                          </label>
+                          <input
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="+62 812 3456 7890"
+                            className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
+                            {t('Subject Topic', 'Topik Subjek')}
+                          </label>
+                          <select
+                            value={formData.subject}
+                            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                            className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                          >
+                            <option value="General Inquiry">{t('General Inquiry', 'Pertanyaan Umum')}</option>
+                            <option value="Room Reservation">{t('Room Reservation', 'Reservasi Kamar')}</option>
+                            <option value="Feedback">{t('Guest Feedback', 'Umpan Balik Tamu')}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 flex flex-col">
                         <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
-                          {t('Your Full Name', 'Nama Lengkap')} <span className="text-red-500">*</span>
+                          {t('Your Message', 'Pesan Anda')} <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
+                        <textarea
+                          rows={6}
                           required
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          placeholder="e.g. Jane Doe"
-                          className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
-                          {t('Email Address', 'Alamat Email')} <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="jane@example.com"
-                          className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
+                          value={formData.message}
+                          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                          placeholder={t('Tell us how we can assist you...', 'Beri tahu kami bagaimana kami dapat membantu Anda...')}
+                          className="w-full flex-1 min-h-[140px] px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059] resize-none"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
-                          {t('Phone Number (Optional)', 'Nomor Telepon (Opsional)')}
-                        </label>
-                        <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          placeholder="+62 812 3456 7890"
-                          className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
-                          {t('Subject Topic', 'Topik Subjek')}
-                        </label>
-                        <select
-                          value={formData.subject}
-                          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                          className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059]"
-                        >
-                          <option value="General Inquiry">{t('General Inquiry', 'Pertanyaan Umum')}</option>
-                          <option value="Room Reservation">{t('Room Reservation', 'Reservasi Kamar')}</option>
-                          <option value="Feedback">{t('Guest Feedback', 'Umpan Balik Tamu')}</option>
-                        </select>
-                      </div>
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full sm:w-auto px-8 py-3 bg-[#C5A059] text-[#1C1C19] font-sans uppercase tracking-wider text-xs font-semibold rounded-md hover:bg-[#b08d49] transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                            {t('Sending...', 'Mengirim...')}
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4" /> {t('Send Message', 'Kirim Pesan')}
+                          </>
+                        )}
+                      </button>
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1.5 font-sans">
-                        {t('Your Message', 'Pesan Anda')} <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        rows={5}
-                        required
-                        value={formData.message}
-                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        placeholder={t('Tell us how we can assist you...', 'Beri tahu kami bagaimana kami dapat membantu Anda...')}
-                        className="w-full px-4 py-2.5 text-sm border border-[#e8e6e1] dark:border-[#30312f] bg-white dark:bg-[#191816] text-[#1c1b19] dark:text-[#F7F5F2] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#C5A059] resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full sm:w-auto px-8 py-3 bg-[#C5A059] text-[#1C1C19] font-sans uppercase tracking-wider text-xs font-semibold rounded-md hover:bg-[#b08d49] transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                          {t('Sending...', 'Mengirim...')}
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" /> {t('Send Message', 'Kirim Pesan')}
-                        </>
-                      )}
-                    </button>
                   </form>
                 )}
               </div>

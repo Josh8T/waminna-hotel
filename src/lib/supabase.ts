@@ -93,6 +93,56 @@ export async function createProfile(
   }
 }
 
+export async function updateProfileData(
+  userId: string,
+  data: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string | null;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return { success: false, error: 'Database connection unavailable' };
+  }
+  try {
+    const updatePayload: Record<string, any> = {};
+    if (data.firstName !== undefined) updatePayload.first_name = data.firstName.trim();
+    if (data.lastName !== undefined) updatePayload.last_name = data.lastName.trim();
+    if (data.email !== undefined) updatePayload.email = data.email.trim();
+    if (data.phone !== undefined) updatePayload.phone = data.phone ? data.phone.trim() : null;
+
+    // 1. Update profiles table in Supabase
+    const { error } = await supabase
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', userId);
+
+    if (error) {
+      console.warn('Notice updating profiles table:', error);
+    }
+
+    // 2. Update Supabase Auth user metadata
+    const userMetadata: Record<string, any> = {};
+    if (data.firstName !== undefined) userMetadata.first_name = data.firstName.trim();
+    if (data.lastName !== undefined) userMetadata.last_name = data.lastName.trim();
+    if (data.phone !== undefined) userMetadata.phone = data.phone ? data.phone.trim() : null;
+
+    const authUpdates: Record<string, any> = { data: userMetadata };
+    if (data.email) authUpdates.email = data.email.trim();
+
+    try {
+      await supabase.auth.updateUser(authUpdates);
+    } catch (authErr) {
+      console.warn('Notice updating auth user metadata:', authErr);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update profile' };
+  }
+}
+
 
 
 /**

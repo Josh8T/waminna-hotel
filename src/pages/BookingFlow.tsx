@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Users, CreditCard, Lock, ChevronLeft, ChevronRight, Shield, AlertTriangle, QrCode, Building2, ShieldCheck } from 'lucide-react';
+import { Calendar, Users, Lock, ChevronLeft, Shield, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
 import { validateStayDates } from '@/lib/dateUtils';
-import { createMidtransSnapToken } from '@/lib/midtrans';
+import { createMidtransSnapToken, verifyMidtransPayment } from '@/lib/midtrans';
 import Header from '@/components/Header';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,9 +19,7 @@ export default function BookingFlow() {
   const checkOut = searchParams.get('checkOut') || '';
   const guests = searchParams.get('guests') || '2';
 
-  const [step, setStep] = useState(1);
   const [selectedAddons] = useState<string[]>([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'qris' | 'va' | 'card'>('qris');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,10 +34,10 @@ export default function BookingFlow() {
     if (user) {
       setFormData((prev) => ({
         ...prev,
-        firstName: prev.firstName || user.firstName || '',
-        lastName: prev.lastName || user.lastName || '',
-        email: prev.email || user.email || '',
-        phone: prev.phone || user.phone || '',
+        firstName: user.firstName || prev.firstName || '',
+        lastName: user.lastName || prev.lastName || '',
+        email: user.email || prev.email || '',
+        phone: user.phone || prev.phone || '',
       }));
     }
   }, [user]);
@@ -95,22 +93,20 @@ export default function BookingFlow() {
     );
   }
 
-  const validateStep = () => {
+  const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (step === 2) {
-      if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-      if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-      if (!formData.email.trim()) newErrors.email = 'Email is required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email';
+    if (!formData.firstName.trim()) newErrors.firstName = t('First name is required', 'Nama depan wajib diisi');
+    if (!formData.lastName.trim()) newErrors.lastName = t('Last name is required', 'Nama belakang wajib diisi');
+    if (!formData.email.trim()) newErrors.email = t('Email is required', 'Email wajib diisi');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = t('Invalid email address', 'Alamat email tidak valid');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinue = () => {
-    if (step === 1) {
-      setStep(2);
-    } else if (validateStep()) {
+  const handlePay = () => {
+    if (validateForm()) {
       handleSubmit();
     }
   };
@@ -150,8 +146,14 @@ export default function BookingFlow() {
         ],
       });
 
-      const proceedWithBooking = async () => {
+      const proceedWithBooking = async (
+        bookingStatus: 'confirmed' | 'pending' = 'confirmed',
+        paymentStatus: 'paid' | 'pending' = 'paid'
+      ) => {
         const booking = await createBooking({
+          bookingReference: orderId,
+          status: bookingStatus,
+          paymentStatus: paymentStatus,
           roomId,
           checkIn,
           checkOut,
@@ -169,29 +171,81 @@ export default function BookingFlow() {
       // 2. Trigger Midtrans Snap popup
       if (window.snap && typeof window.snap.pay === 'function' && snapResponse?.token) {
         window.snap.pay(snapResponse.token, {
-          onSuccess: async (result: unknown) => {
-            console.log('Midtrans Payment Success:', result);
-            await proceedWithBooking();
+          onSuccess: async (result: any) => {
+            console.log('Midtrans Payment Success event:', result);
+            // Server-side verification of payment before confirming
+            try {
+              const verifyRes = await verifyMidtransPayment(orderId);
+              if (
+                verifyRes.isPaid ||
+                result?.transaction_status === 'settlement' ||
+                (result?.transaction_status === 'capture' && result?.fraud_status === 'accept')
+              ) {
+                await proceedWithBooking('confirmed', 'paid');
+              } else if (verifyRes.isPending || result?.transaction_status === 'pending') {
+                await proceedWithBooking('pending', 'pending');
+              } else {
+                setIsSubmitting(false);
+                setErrors({
+                  submit: t(
+                    'Payment was not verified by the payment gateway. Please contact hotel support if your account was charged.',
+                    'Pembayaran belum dapat diverifikasi oleh gateway pembayaran. Silakan hubungi hotel jika saldo Anda terpotong.'
+                  ),
+                });
+              }
+            } catch {
+              // Fallback to SDK result check if verification endpoint experiences network blip
+              if (
+                result?.transaction_status === 'settlement' ||
+                (result?.transaction_status === 'capture' && result?.fraud_status === 'accept')
+              ) {
+                await proceedWithBooking('confirmed', 'paid');
+              } else {
+                setIsSubmitting(false);
+                setErrors({
+                  submit: t('Payment verification failed. Please try again.', 'Verifikasi pembayaran gagal. Silakan coba lagi.'),
+                });
+              }
+            }
           },
-          onPending: async (result: unknown) => {
-            console.log('Midtrans Payment Pending:', result);
-            await proceedWithBooking();
+          onPending: async (result: any) => {
+            console.log('Midtrans Payment Pending event:', result);
+            // A payment code/VA was issued but payment is not complete yet
+            await proceedWithBooking('pending', 'pending');
           },
-          onError: (err: unknown) => {
+          onError: (err: any) => {
             console.error('Midtrans Payment Error:', err);
-            setErrors({ submit: 'Payment failed with Midtrans. Please choose another payment method or try again.' });
             setIsSubmitting(false);
+            setErrors({
+              submit: t(
+                'Payment was declined or failed with Midtrans. Please choose another payment method or try again.',
+                'Pembayaran ditolak atau gagal melalui Midtrans. Silakan gunakan metode lain atau coba lagi.'
+              ),
+            });
           },
           onClose: () => {
+            console.log('Midtrans Snap modal closed without completing payment');
             setIsSubmitting(false);
+            setErrors({
+              submit: t(
+                'Payment was cancelled or closed. Your reservation was not placed.',
+                'Pembayaran dibatalkan atau ditutup. Reservasi Anda belum dibuat.'
+              ),
+            });
           },
         });
       } else if (snapResponse?.redirectUrl) {
         // Fallback for full page redirect if popup is blocked
         window.location.href = snapResponse.redirectUrl;
       } else {
-        // Fallback if snap modal blocked or direct test mode
-        await proceedWithBooking();
+        // Secure fallback: NEVER auto-confirm booking if payment modal cannot open
+        setIsSubmitting(false);
+        setErrors({
+          submit: t(
+            'Unable to launch payment modal. Please refresh the page and try again.',
+            'Tidak dapat membuka jendela pembayaran. Silakan muat ulang halaman dan coba lagi.'
+          ),
+        });
       }
     } catch (err: any) {
       console.error('Payment checkout error:', err);
@@ -222,39 +276,18 @@ export default function BookingFlow() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-semibold tracking-widest uppercase text-[#785927] font-sans">
-                Reservation Checkout
+                {t('Reservation Checkout', 'Checkout Reservasi')}
               </span>
               <h1 className="text-2xl sm:text-3xl font-display font-normal text-[#1c1b19]">
-                {step === 1 ? 'Review Room & Options' : 'Guest Information & Payment'}
+                {t('Review Stay & Guest Details', 'Tinjau Menginap & Data Tamu')}
               </h1>
             </div>
             
-            {/* Step Indicator */}
-            <div className="flex items-center gap-2 sm:gap-3 font-sans font-semibold text-xs">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className={`px-3 py-1.5 rounded-full border transition-all ${
-                  step === 1
-                    ? 'bg-[#414930] text-white border-[#414930] shadow-sm'
-                    : 'bg-white text-[#76786e] border-[#e8e6e1] hover:border-[#414930]'
-                }`}
-              >
-                1. {t('Review & Stay', 'Tinjau & Menginap')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (step === 1 && validateStep()) setStep(2);
-                }}
-                className={`px-3 py-1.5 rounded-full border transition-all ${
-                  step === 2
-                    ? 'bg-[#414930] text-white border-[#414930] shadow-sm'
-                    : 'bg-white text-[#76786e] border-[#e8e6e1] hover:border-[#414930]'
-                }`}
-              >
-                2. {t('Guest & Midtrans Payment', 'Tamu & Pembayaran Midtrans')}
-              </button>
+            <div className="hidden sm:flex items-center gap-2 font-sans font-semibold text-xs text-[#76786e]">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e8e6e1] rounded-full text-[#414930] shadow-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#414930]" />
+                {t('Secure Checkout', 'Checkout Aman')}
+              </span>
             </div>
           </div>
         </div>
@@ -262,295 +295,188 @@ export default function BookingFlow() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex flex-col lg:flex-row gap-8">
         {/* Main Form */}
-        <main className="flex-1">
-          {/* Step 1 - Dates Review */}
-          {step === 1 && (
-            <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-[#1a1917] mb-4">Review Your Stay</h2>
-              <div className="flex gap-4 p-4 bg-warm-bg rounded-lg mb-6">
+        <main className="flex-1 space-y-6">
+          {/* Review Stay */}
+          <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[#1a1917] mb-4">
+              {t('Review Your Stay', 'Tinjau Menginap Anda')}
+            </h2>
+            <div className="flex gap-4 p-4 bg-warm-bg dark:bg-[#1C1C19] rounded-lg mb-6 items-center">
+              <div className="w-24 h-20 min-w-[96px] overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800 border border-warm-border/50">
                 <img
-                  src={room.photos[0]}
+                  src={getPhotoUrl(room.photos?.[0])}
                   alt={room.name}
-                  className="w-24 h-20 object-cover rounded-md"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
+                  }}
                 />
-                <div>
-                  <h3 className="font-semibold text-[#1a1917]">{room.name}</h3>
-                  <p className="text-sm text-[#8a8984]">{formatCurrency(room.pricePerNight)}/night</p>
-                </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                <div className="p-3 bg-warm-bg rounded-lg">
-                  <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
-                  <p className="text-[11px] text-[#8a8984]">Check-in</p>
-                  <p className="text-sm font-medium">{new Date(checkIn).toLocaleDateString()}</p>
-                </div>
-                <div className="p-3 bg-warm-bg rounded-lg">
-                  <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
-                  <p className="text-[11px] text-[#8a8984]">Check-out</p>
-                  <p className="text-sm font-medium">{new Date(checkOut).toLocaleDateString()}</p>
-                </div>
-                <div className="p-3 bg-warm-bg rounded-lg">
-                  <Users className="w-4 h-4 text-brand mx-auto mb-1" />
-                  <p className="text-[11px] text-[#8a8984]">Guests</p>
-                  <p className="text-sm font-medium">{guests}</p>
-                </div>
-              </div>
-              <p className="text-sm text-[#5c5a54] text-center mb-6">
-                {nights} night{nights > 1 ? 's' : ''} stay
-              </p>
-
-              {/* Step 1 Payment Preview Callout */}
-              <div className="pt-5 border-t border-warm-border dark:border-[#30312f]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-brand dark:text-[#C5A059]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#1a1917] dark:text-[#F7F5F2]">
-                      {t('Payment Methods (Midtrans Gateway)', 'Metode Pembayaran (Midtrans Gateway)')}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    Bank Indonesia Regulated
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 rounded-lg border border-warm-border dark:border-[#30312f] bg-[#fbf9f6] dark:bg-[#1C1C19]">
-                    <QrCode className="w-5 h-5 text-brand dark:text-[#C5A059] mx-auto mb-1" />
-                    <span className="text-xs font-semibold text-[#1a1917] dark:text-[#F7F5F2] block">QRIS</span>
-                    <span className="text-[10px] text-[#8a8984] dark:text-[#ded9d6]">GoPay, BCA, OVO</span>
-                  </div>
-                  <div className="p-3 rounded-lg border border-warm-border dark:border-[#30312f] bg-[#fbf9f6] dark:bg-[#1C1C19]">
-                    <Building2 className="w-5 h-5 text-brand dark:text-[#C5A059] mx-auto mb-1" />
-                    <span className="text-xs font-semibold text-[#1a1917] dark:text-[#F7F5F2] block">Virtual Account</span>
-                    <span className="text-[10px] text-[#8a8984] dark:text-[#ded9d6]">BCA, Mandiri, BRI</span>
-                  </div>
-                  <div className="p-3 rounded-lg border border-warm-border dark:border-[#30312f] bg-[#fbf9f6] dark:bg-[#1C1C19]">
-                    <CreditCard className="w-5 h-5 text-brand dark:text-[#C5A059] mx-auto mb-1" />
-                    <span className="text-xs font-semibold text-[#1a1917] dark:text-[#F7F5F2] block">Credit Cards</span>
-                    <span className="text-[10px] text-[#8a8984] dark:text-[#ded9d6]">Visa, Mastercard, JCB</span>
-                  </div>
-                </div>
+              <div>
+                <h3 className="font-semibold text-[#1a1917] dark:text-[#F7F5F2]">{room.name}</h3>
+                <p className="text-sm text-[#8a8984] dark:text-[#ded9d6]">{formatCurrency(room.pricePerNight)}/night</p>
               </div>
             </div>
-          )}
-
-          {/* Step 2 - Guest Details + Payment */}
-          {step === 2 && (
-            <div className="space-y-6">
-              {/* Guest Info */}
-              <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
-                <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-4">
-                  Guest Information
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) => updateField('firstName', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                        errors.firstName ? 'border-red-400' : 'border-warm-border'
-                      }`}
-                    />
-                    {errors.firstName && <p className="text-xs text-red-500 mt-1">{errors.firstName}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) => updateField('lastName', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                        errors.lastName ? 'border-red-400' : 'border-warm-border'
-                      }`}
-                    />
-                    {errors.lastName && <p className="text-xs text-red-500 mt-1">{errors.lastName}</p>}
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${
-                      errors.email ? 'border-red-400' : 'border-warm-border'
-                    }`}
-                  />
-                  {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                </div>
-                <div className="mb-4">
-                  <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
-                    Special Requests (optional)
-                  </label>
-                  <textarea
-                    value={formData.specialRequests}
-                    onChange={(e) => updateField('specialRequests', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand resize-none"
-                  />
-                </div>
+            <div className="grid grid-cols-3 gap-4 text-center mb-6">
+              <div className="p-3 bg-warm-bg rounded-lg">
+                <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
+                <p className="text-[11px] text-[#8a8984]">{t('Check-in', 'Check-in')}</p>
+                <p className="text-sm font-medium">{new Date(checkIn).toLocaleDateString()}</p>
               </div>
-
-              {/* Midtrans Payment Options */}
-              <div className="bg-white dark:bg-[#242320] rounded-xl border border-warm-border dark:border-[#30312f] p-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <CreditCard className="w-4 h-4 text-brand dark:text-[#C5A059]" />
-                  <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984] dark:text-[#ded9d6]">
-                    {t('Payment Method (Midtrans Gateway)', 'Metode Pembayaran (Midtrans Gateway)')}
-                  </h2>
-                </div>
-
-                <div className="space-y-3 mb-6 font-sans">
-                  {/* QRIS */}
-                  <label
-                    onClick={() => setSelectedPaymentMethod('qris')}
-                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'qris'
-                        ? 'border-brand dark:border-[#C5A059] bg-brand-light/20 dark:bg-[#C5A059]/10 ring-1 ring-brand/30 dark:ring-[#C5A059]/30'
-                        : 'border-warm-border dark:border-[#30312f] hover:border-warm-border-strong dark:hover:border-neutral-600 bg-white dark:bg-[#1C1C19]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={selectedPaymentMethod === 'qris'}
-                      onChange={() => setSelectedPaymentMethod('qris')}
-                      className="mt-1 text-brand dark:text-[#C5A059] focus:ring-brand"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-[#1a1917] dark:text-[#F7F5F2] flex items-center gap-1.5">
-                          <QrCode className="w-4 h-4 text-brand dark:text-[#C5A059]" /> QRIS Instant Pay
-                        </span>
-                        <span className="text-[10px] uppercase font-semibold text-[#8a8984] dark:text-[#C5A059]">Instant</span>
-                      </div>
-                      <p className="text-xs text-[#8a8984] dark:text-[#ded9d6] mt-0.5">
-                        GoPay, BCA Mobile, OVO, Dana, LinkAja, ShopeePay
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Virtual Account */}
-                  <label
-                    onClick={() => setSelectedPaymentMethod('va')}
-                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'va'
-                        ? 'border-brand dark:border-[#C5A059] bg-brand-light/20 dark:bg-[#C5A059]/10 ring-1 ring-brand/30 dark:ring-[#C5A059]/30'
-                        : 'border-warm-border dark:border-[#30312f] hover:border-warm-border-strong dark:hover:border-neutral-600 bg-white dark:bg-[#1C1C19]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={selectedPaymentMethod === 'va'}
-                      onChange={() => setSelectedPaymentMethod('va')}
-                      className="mt-1 text-brand dark:text-[#C5A059] focus:ring-brand"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-[#1a1917] dark:text-[#F7F5F2] flex items-center gap-1.5">
-                          <Building2 className="w-4 h-4 text-brand dark:text-[#C5A059]" /> Virtual Account / Bank Transfer
-                        </span>
-                        <span className="text-[10px] uppercase font-semibold text-[#8a8984] dark:text-[#C5A059]">Auto-Check</span>
-                      </div>
-                      <p className="text-xs text-[#8a8984] dark:text-[#ded9d6] mt-0.5">
-                        BCA, Bank Mandiri, BNI, BRI, Permata Bank
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Credit / Debit Card */}
-                  <label
-                    onClick={() => setSelectedPaymentMethod('card')}
-                    className={`flex items-start gap-3 p-3.5 border rounded-lg cursor-pointer transition-all ${
-                      selectedPaymentMethod === 'card'
-                        ? 'border-brand dark:border-[#C5A059] bg-brand-light/20 dark:bg-[#C5A059]/10 ring-1 ring-brand/30 dark:ring-[#C5A059]/30'
-                        : 'border-warm-border dark:border-[#30312f] hover:border-warm-border-strong dark:hover:border-neutral-600 bg-white dark:bg-[#1C1C19]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      checked={selectedPaymentMethod === 'card'}
-                      onChange={() => setSelectedPaymentMethod('card')}
-                      className="mt-1 text-brand dark:text-[#C5A059] focus:ring-brand"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-[#1a1917] dark:text-[#F7F5F2] flex items-center gap-1.5">
-                          <CreditCard className="w-4 h-4 text-brand dark:text-[#C5A059]" /> Credit &amp; Debit Card (3D Secure)
-                        </span>
-                        <span className="text-[10px] uppercase font-semibold text-[#8a8984] dark:text-[#C5A059]">PCI-DSS</span>
-                      </div>
-                      <p className="text-xs text-[#8a8984] dark:text-[#ded9d6] mt-0.5">
-                        Visa, Mastercard, JCB, American Express
-                      </p>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="p-3 bg-warm-secondary/60 dark:bg-[#1C1C19] rounded-lg border border-warm-border dark:border-[#30312f] flex items-start gap-2.5 text-[#5c5a54] dark:text-[#ded9d6]">
-                  <Lock className="w-4 h-4 text-brand dark:text-[#C5A059] mt-0.5 flex-shrink-0" />
-                  <p className="text-xs leading-relaxed">
-                    <strong>End-to-End Encrypted:</strong> {t('Your payment is securely processed through Midtrans PCI-DSS Level 1 gateway. Waminna Hotel does not store your card details.', 'Pembayaran Anda diproses secara aman melalui gateway Midtrans berstandar PCI-DSS Level 1. Waminna Hotel tidak menyimpan data kartu Anda.')}
-                  </p>
-                </div>
+              <div className="p-3 bg-warm-bg rounded-lg">
+                <Calendar className="w-4 h-4 text-brand mx-auto mb-1" />
+                <p className="text-[11px] text-[#8a8984]">{t('Check-out', 'Check-out')}</p>
+                <p className="text-sm font-medium">{new Date(checkOut).toLocaleDateString()}</p>
               </div>
+              <div className="p-3 bg-warm-bg rounded-lg">
+                <Users className="w-4 h-4 text-brand mx-auto mb-1" />
+                <p className="text-[11px] text-[#8a8984]">{t('Guests', 'Tamu')}</p>
+                <p className="text-sm font-medium">{guests}</p>
+              </div>
+            </div>
+            <p className="text-sm text-[#5c5a54] text-center">
+              {nights} night{nights > 1 ? 's' : ''} stay
+            </p>
+          </div>
 
-              {errors.submit && (
-                <p className="text-sm text-red-500 text-center font-medium">{errors.submit}</p>
+          {/* Guest Info */}
+          <div className="bg-white rounded-xl border border-warm-border p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[11px] font-medium tracking-wider uppercase text-[#8a8984]">
+                {t('Guest Information', 'Informasi Tamu')}
+              </h2>
+              {user && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#785927] dark:text-[#C5A059] bg-[#C5A059]/10 px-2 py-0.5 rounded">
+                  <Lock className="w-3 h-3" />
+                  {t('Locked to account data', 'Terkunci sesuai data akun')}
+                </span>
               )}
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                  {t('First Name', 'Nama Depan')} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => updateField('firstName', e.target.value)}
+                  readOnly={!!user}
+                  className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none ${
+                    user
+                      ? 'bg-neutral-100 dark:bg-[#1C1C19] text-neutral-600 dark:text-neutral-300 cursor-not-allowed border-warm-border'
+                      : errors.firstName
+                      ? 'border-red-400 focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                      : 'border-warm-border focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                  }`}
+                />
+                {errors.firstName && <p className="text-xs text-red-500 mt-1">{errors.firstName}</p>}
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                  {t('Last Name', 'Nama Belakang')} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => updateField('lastName', e.target.value)}
+                  readOnly={!!user}
+                  className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none ${
+                    user
+                      ? 'bg-neutral-100 dark:bg-[#1C1C19] text-neutral-600 dark:text-neutral-300 cursor-not-allowed border-warm-border'
+                      : errors.lastName
+                      ? 'border-red-400 focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                      : 'border-warm-border focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                  }`}
+                />
+                {errors.lastName && <p className="text-xs text-red-500 mt-1">{errors.lastName}</p>}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                {t('Email Address', 'Alamat Email')} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => updateField('email', e.target.value)}
+                readOnly={!!user}
+                className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none ${
+                  user
+                    ? 'bg-neutral-100 dark:bg-[#1C1C19] text-neutral-600 dark:text-neutral-300 cursor-not-allowed border-warm-border'
+                    : errors.email
+                    ? 'border-red-400 focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                    : 'border-warm-border focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                }`}
+              />
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+            </div>
+            <div className="mb-4">
+              <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                {t('Phone Number', 'Nomor Telepon')}
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => updateField('phone', e.target.value)}
+                readOnly={!!user && !!user.phone}
+                className={`w-full px-3 py-2.5 border rounded-md text-sm focus:outline-none ${
+                  user && user.phone
+                    ? 'bg-neutral-100 dark:bg-[#1C1C19] text-neutral-600 dark:text-neutral-300 cursor-not-allowed border-warm-border'
+                    : 'border-warm-border focus:ring-2 focus:ring-brand/20 focus:border-brand'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                {t('Special Requests (optional)', 'Permintaan Khusus (opsional)')}
+              </label>
+              <textarea
+                value={formData.specialRequests}
+                onChange={(e) => updateField('specialRequests', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2.5 border border-warm-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Secure Payment Note */}
+          <div className="p-4 bg-white dark:bg-[#242320] rounded-xl border border-warm-border dark:border-[#30312f] shadow-sm flex items-start gap-3">
+            <Lock className="w-4 h-4 text-brand dark:text-[#C5A059] mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-[#5c5a54] dark:text-[#ded9d6] space-y-1">
+              <p className="font-semibold text-[#1a1917] dark:text-[#F7F5F2]">
+                {t('Secure Payment with Midtrans', 'Pembayaran Aman dengan Midtrans')}
+              </p>
+              <p className="leading-relaxed">
+                {t(
+                  'Clicking "Pay" opens the encrypted payment window to pay using QRIS, Virtual Accounts (BCA, Mandiri, BNI, BRI), or Credit Cards.',
+                  'Klik "Bayar" untuk membuka jendela pembayaran terenkripsi menggunakan QRIS, Transfer Virtual Account (BCA, Mandiri, BNI, BRI), atau Kartu Kredit.'
+                )}
+              </p>
+            </div>
+          </div>
+
+          {errors.submit && (
+            <p className="text-sm text-red-500 text-center font-medium">{errors.submit}</p>
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-6">
-            {step > 1 ? (
-              <button
-                onClick={() => setStep(step - 1)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-warm-border-strong rounded-md text-sm font-medium text-[#5c5a54] hover:bg-warm-secondary transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" /> {t('Back', 'Kembali')}
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate(`/rooms/${room.id}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-warm-border-strong rounded-md text-sm font-medium text-[#5c5a54] hover:bg-warm-secondary transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" /> {t('Cancel', 'Batal')}
-              </button>
-            )}
+          <div className="flex items-center justify-between pt-2">
             <button
-              onClick={handleContinue}
+              onClick={() => navigate(`/rooms/${room.id}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-warm-border-strong rounded-md text-sm font-medium text-[#5c5a54] hover:bg-warm-secondary transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" /> {t('Back', 'Kembali')}
+            </button>
+            <button
+              onClick={handlePay}
               disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 px-8 py-2.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors disabled:opacity-50 min-w-[120px] shadow-sm"
             >
               {isSubmitting ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : step === 2 ? (
-                t('Pay with Midtrans', 'Bayar dengan Midtrans')
               ) : (
-                <>
-                  {t('Continue', 'Lanjut')} <ChevronRight className="w-4 h-4" />
-                </>
+                t('Pay', 'Bayar')
               )}
             </button>
           </div>

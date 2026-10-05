@@ -59,6 +59,14 @@ export default function App() {
         }
       />
       <Route
+        path="/account"
+        element={
+          <ProtectedRoute requiredRole="user">
+            <MyBookings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <ProtectedRoute requiredRole="staff">

@@ -96,3 +96,63 @@ export async function createMidtransSnapToken(
 
   throw new Error("Payment service did not return a valid transaction token.");
 }
+
+export interface MidtransVerificationResult {
+  verified: boolean;
+  isPaid: boolean;
+  isPending: boolean;
+  transactionStatus?: string;
+  paymentType?: string;
+  grossAmount?: string;
+  message?: string;
+}
+
+/**
+ * Server-side payment verification
+ * Queries Supabase Edge Function to securely verify transaction status with Midtrans API.
+ */
+export async function verifyMidtransPayment(orderId: string): Promise<MidtransVerificationResult> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://esolildgbjbnivsdtqnd.supabase.co';
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const edgeFunctionUrl = `${supabaseUrl}/functions/v1/create-midtrans-snap`;
+
+  try {
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey || '',
+      },
+      body: JSON.stringify({ action: 'verify', orderId }),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || !data) {
+      return {
+        verified: false,
+        isPaid: false,
+        isPending: false,
+        message: data?.error || 'Failed to verify transaction status',
+      };
+    }
+
+    return {
+      verified: !!data.verified,
+      isPaid: !!data.isPaid,
+      isPending: !!data.isPending,
+      transactionStatus: data.transactionStatus,
+      paymentType: data.paymentType,
+      grossAmount: data.grossAmount,
+      message: data.message,
+    };
+  } catch (err: any) {
+    return {
+      verified: false,
+      isPaid: false,
+      isPending: false,
+      message: err.message || 'Network error during payment verification',
+    };
+  }
+}
+

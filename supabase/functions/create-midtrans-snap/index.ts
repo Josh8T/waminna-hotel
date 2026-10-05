@@ -15,19 +15,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const {
-      orderId,
-      grossAmountIdr,
-      customerDetails,
-      itemDetails,
-    } = await req.json();
-
-    if (!orderId || !grossAmountIdr) {
-      return new Response(
-        JSON.stringify({ error: "Missing orderId or grossAmountIdr" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const body = await req.json();
 
     const rawServerKey = Deno.env.get("MIDTRANS_SERVER_KEY");
     if (!rawServerKey) {
@@ -38,7 +26,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const serverKey = rawServerKey.trim().replace(/^["']|["']$/g, "");
-
     if (serverKey.toLowerCase().includes("client")) {
       return new Response(
         JSON.stringify({
@@ -48,13 +35,86 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Enforce Sandbox by default unless MIDTRANS_IS_PRODUCTION is strictly "true"
     const isProduction = Deno.env.get("MIDTRANS_IS_PRODUCTION") === "true";
+    const authHeader = `Basic ${btoa(`${serverKey}:`)}`;
+
+    // 1. ACTION: VERIFY TRANSACTION STATUS (Secure Server-to-Server Verification)
+    if (body.action === "verify") {
+      const orderId = body.orderId;
+      if (!orderId) {
+        return new Response(
+          JSON.stringify({ error: "Missing orderId for verification" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const statusApiUrl = isProduction
+        ? `https://api.midtrans.com/v2/${orderId}/status`
+        : `https://api.sandbox.midtrans.com/v2/${orderId}/status`;
+
+      const statusRes = await fetch(statusApiUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/json",
+          "Authorization": authHeader,
+        },
+      });
+
+      const statusData = await statusRes.json().catch(() => null);
+
+      if (!statusRes.ok || !statusData) {
+        return new Response(
+          JSON.stringify({
+            verified: false,
+            isPaid: false,
+            isPending: false,
+            transactionStatus: "not_found",
+            message: "No transaction found or payment was cancelled/unstarted.",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const txnStatus = statusData.transaction_status;
+      const fraudStatus = statusData.fraud_status;
+
+      const isPaid =
+        txnStatus === "settlement" ||
+        (txnStatus === "capture" && fraudStatus === "accept");
+      const isPending = txnStatus === "pending";
+
+      return new Response(
+        JSON.stringify({
+          verified: isPaid,
+          isPaid,
+          isPending,
+          transactionStatus: txnStatus,
+          paymentType: statusData.payment_type,
+          grossAmount: statusData.gross_amount,
+          details: statusData,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. ACTION: CREATE SNAP TOKEN
+    const {
+      orderId,
+      grossAmountIdr,
+      customerDetails,
+      itemDetails,
+    } = body;
+
+    if (!orderId || !grossAmountIdr) {
+      return new Response(
+        JSON.stringify({ error: "Missing orderId or grossAmountIdr" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const snapUrl = isProduction
       ? "https://app.midtrans.com/snap/v1/transactions"
       : "https://app.sandbox.midtrans.com/snap/v1/transactions";
-
-    const authHeader = `Basic ${btoa(`${serverKey}:`)}`;
 
     const payload = {
       transaction_details: {

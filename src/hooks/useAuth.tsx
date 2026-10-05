@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { UserRole } from '@/lib/data';
-import { supabase, getProfile, createProfile, type AuthUser } from '@/lib/supabase';
+import { supabase, getProfile, createProfile, updateProfileData, type AuthUser } from '@/lib/supabase';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -14,6 +14,12 @@ interface AuthContextType {
     phone?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  updateUser: (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+  }) => Promise<{ success: boolean; error?: string }>;
   hasRole: (role: UserRole) => boolean;
 }
 
@@ -121,6 +127,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback(async (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+  }): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'No authenticated user found.' };
+
+    const res = await updateProfileData(user.id, data);
+    if (res.success) {
+      setUser((prev) => (prev ? {
+        ...prev,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone !== undefined ? data.phone : prev.phone,
+      } : null));
+    }
+    return res;
+  }, [user]);
+
   const hasRole = useCallback((role: UserRole): boolean => {
     if (!user) return role === 'guest';
     const roleHierarchy: Record<UserRole, number> = { guest: 0, user: 1, staff: 2, owner: 3 };
@@ -128,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, hasRole }}>
       {children}
     </AuthContext.Provider>
   );

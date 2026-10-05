@@ -1,15 +1,30 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Sun, Moon, Globe } from 'lucide-react';
+import { Menu, X, Sun, Moon, ChevronDown, User, LogOut, Globe } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function Header() {
   const { user, logout, hasRole } = useAuth();
   const { theme, toggleTheme, language, toggleLanguage, t } = useThemeLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -63,18 +78,21 @@ export default function Header() {
           : 'bg-[#fbf9f6]/80 dark:bg-[#1C1C19]/80 backdrop-blur-md border-b border-[#C5A059]/20'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        {/* Mobile menu button */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative">
+        {/* Left: Mobile menu button */}
         <button
-          className="lg:hidden p-2 -ml-2 text-[#1c1b19] dark:text-[#F7F5F2]"
+          className="lg:hidden p-2 -ml-2 text-[#1c1b19] dark:text-[#F7F5F2] z-20"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
         >
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
-        {/* Logo */}
-        <Link to="/" className="flex items-center">
+        {/* Logo (Centered on mobile/tablet, left-aligned on desktop) */}
+        <Link
+          to="/"
+          className="flex items-center absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 z-10"
+        >
           {/* Mobile compact emblem icon to save header space */}
           <img
             src={`${import.meta.env.BASE_URL}images/logo/logo_transparent.png`}
@@ -97,8 +115,8 @@ export default function Header() {
           />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-1">
+        {/* Center: Desktop nav (Centered in header container) */}
+        <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
           <Link
             to="/rooms"
             className={`px-3.5 py-2 text-xs uppercase tracking-wider font-sans font-semibold rounded-md transition-colors ${
@@ -159,20 +177,22 @@ export default function Header() {
 
         {/* Right actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Language Selector */}
-          <button
-            onClick={toggleLanguage}
-            className="px-2.5 py-1.5 text-xs font-sans font-semibold tracking-wider rounded border border-[#e8e6e1] dark:border-[#30312f] text-[#46483f] dark:text-[#F7F5F2] hover:text-[#C5A059] hover:border-[#C5A059] transition-colors flex items-center gap-1.5 bg-white/50 dark:bg-black/30"
-            title="Switch Language (EN / ID)"
-          >
-            <Globe className="w-3.5 h-3.5 text-[#C5A059]" />
-            <span>{language}</span>
-          </button>
+          {/* Language Selector for guests */}
+          {!user && (
+            <button
+              onClick={toggleLanguage}
+              className="hidden sm:inline-flex px-2.5 py-1.5 text-xs font-sans font-semibold tracking-wider rounded border border-[#e8e6e1] dark:border-[#30312f] text-[#46483f] dark:text-[#F7F5F2] hover:text-[#C5A059] hover:border-[#C5A059] transition-colors items-center gap-1.5 bg-white/50 dark:bg-black/30"
+              title="Switch Language (EN / ID)"
+            >
+              <Globe className="w-3.5 h-3.5 text-[#C5A059]" />
+              <span>{language}</span>
+            </button>
+          )}
 
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-1.5 rounded-full text-[#46483f] dark:text-[#F7F5F2] hover:text-[#C5A059] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="hidden sm:inline-flex p-1.5 rounded-full text-[#46483f] dark:text-[#F7F5F2] hover:text-[#C5A059] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
             aria-label="Toggle Theme"
           >
@@ -180,17 +200,55 @@ export default function Header() {
           </button>
 
           {user ? (
-            <div className="hidden sm:flex items-center gap-3">
-              <span className="text-xs uppercase tracking-wider text-[#46483f] dark:text-[#F7F5F2]/80 font-sans font-semibold">
-                {user.firstName}
-              </span>
-              <button
-                onClick={logout}
-                className="text-xs uppercase tracking-wider text-[#827d75] hover:text-[#1c1b19] dark:hover:text-[#F7F5F2] transition-colors font-sans font-semibold"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs uppercase tracking-wider font-sans font-semibold text-[#46483f] dark:text-[#F7F5F2]/90 hover:text-[#1c1b19] dark:hover:text-white hover:bg-[#f2ede9] dark:hover:bg-[#242320] transition-colors focus:outline-none cursor-pointer"
+                  aria-label="User account menu"
+                >
+                  <span className="truncate max-w-[130px]">
+                    {user.firstName || user.email?.split('@')[0] || 'Account'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-[#827D75] dark:text-[#ded9d6]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="w-48 bg-[#fbf9f6] dark:bg-[#1C1C19] border border-[#e8e6e1] dark:border-[#30312f] shadow-lg rounded-xl p-1.5 z-[250]"
               >
-                {t('Sign Out', 'Keluar')}
-              </button>
-            </div>
+                <DropdownMenuItem
+                  onClick={() => setAccountModalOpen(true)}
+                  className="cursor-pointer text-xs uppercase tracking-wider font-sans font-semibold text-[#46483f] dark:text-[#F7F5F2]/90 hover:text-[#1c1b19] dark:hover:text-white hover:bg-[#f2ede9] dark:hover:bg-[#242320] rounded-lg px-3 py-2 flex items-center gap-2 transition-colors outline-none"
+                >
+                  <User className="w-4 h-4 text-[#C5A059]" />
+                  <span>{t('My Account', 'Akun Saya')}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={toggleLanguage}
+                  className="cursor-pointer text-xs uppercase tracking-wider font-sans font-semibold text-[#46483f] dark:text-[#F7F5F2]/90 hover:text-[#1c1b19] dark:hover:text-white hover:bg-[#f2ede9] dark:hover:bg-[#242320] rounded-lg px-3 py-2 flex items-center justify-between transition-colors outline-none"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-[#C5A059]" />
+                    <span>{t('Language', 'Bahasa')}</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] border border-[#C5A059]/20">
+                    {language}
+                  </span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-[#e8e6e1] dark:bg-[#30312f] my-1" />
+
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="cursor-pointer text-xs uppercase tracking-wider font-sans font-semibold text-[#ba1a1a] dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg px-3 py-2 flex items-center gap-2 transition-colors outline-none"
+                >
+                  <LogOut className="w-4 h-4 text-[#ba1a1a] dark:text-red-400" />
+                  <span>{t('Sign Out', 'Keluar')}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Link
@@ -203,7 +261,7 @@ export default function Header() {
           )}
           <button
             onClick={scrollToSearch}
-            className="px-5 py-2.5 text-xs uppercase tracking-wider font-sans font-semibold bg-[#C5A059] text-[#1C1C19] rounded hover:bg-[#b08d49] shadow-sm transition-all whitespace-nowrap"
+            className="px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs uppercase tracking-wider font-sans font-semibold bg-[#C5A059] text-[#1C1C19] rounded hover:bg-[#b08d49] shadow-sm transition-all whitespace-nowrap"
           >
             {t('Book Now', 'Pesan Sekarang')}
           </button>
@@ -353,15 +411,28 @@ export default function Header() {
               </button>
 
               {user ? (
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    logout();
-                  }}
-                  className="w-full px-3 py-2.5 text-xs uppercase tracking-wider font-sans font-semibold text-[#ba1a1a] dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-center transition-colors"
-                >
-                  {t('Sign Out', 'Keluar')}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setAccountModalOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 text-xs uppercase tracking-wider font-sans font-semibold text-[#46483f] dark:text-[#F7F5F2] hover:bg-[#f2ede9] dark:hover:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] rounded-lg text-center transition-colors flex items-center justify-center gap-2"
+                  >
+                    <User className="w-4 h-4 text-[#C5A059]" />
+                    <span>{t('My Account', 'Akun Saya')} ({user.firstName})</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full px-3 py-2.5 text-xs uppercase tracking-wider font-sans font-semibold text-[#ba1a1a] dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-center transition-colors flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{t('Sign Out', 'Keluar')}</span>
+                  </button>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 pt-1">
                   <Link
@@ -385,6 +456,83 @@ export default function Header() {
         </div>,
         document.body
       )}
+
+      {/* Account Profile Dialog */}
+      <Dialog open={accountModalOpen} onOpenChange={setAccountModalOpen}>
+        <DialogContent className="sm:max-w-md bg-[#fbf9f6] dark:bg-[#1C1C19] border border-[#e8e6e1] dark:border-[#30312f] text-[#1c1b19] dark:text-[#F7F5F2] rounded-2xl p-6 shadow-2xl z-[300]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display font-medium text-[#1c1b19] dark:text-[#F7F5F2]">
+              {t('My Account', 'Akun Saya')}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#827D75] dark:text-[#ded9d6] font-sans">
+              {t('Manage your personal details and contact information', 'Kelola detail pribadi dan informasi kontak Anda')}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* User Role Card */}
+          <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white dark:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] mt-1">
+            <div className="w-12 h-12 rounded-full bg-[#C5A059]/15 border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] font-display font-semibold text-lg uppercase shrink-0">
+              {(user?.firstName?.[0] || user?.email?.[0] || 'U')}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-base text-[#1c1b19] dark:text-[#F7F5F2] truncate">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-xs text-[#827D75] dark:text-[#ded9d6] truncate">
+                {user?.email}
+              </p>
+            </div>
+            <span className="px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider rounded-full bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] border border-[#C5A059]/20">
+              {user?.role}
+            </span>
+          </div>
+
+          {/* Account Details List (Non-editable) */}
+          <div className="mt-2 space-y-2.5 bg-white dark:bg-[#242320] rounded-xl border border-[#e8e6e1] dark:border-[#30312f] p-4 text-xs font-sans">
+            <div className="flex items-center justify-between py-2 border-b border-[#e8e6e1] dark:border-[#30312f]">
+              <span className="text-[#827D75] dark:text-[#ded9d6] uppercase tracking-wider font-semibold">
+                {t('First Name', 'Nama Depan')}
+              </span>
+              <span className="font-medium text-sm text-[#1c1b19] dark:text-[#F7F5F2]">
+                {user?.firstName || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-[#e8e6e1] dark:border-[#30312f]">
+              <span className="text-[#827D75] dark:text-[#ded9d6] uppercase tracking-wider font-semibold">
+                {t('Last Name', 'Nama Belakang')}
+              </span>
+              <span className="font-medium text-sm text-[#1c1b19] dark:text-[#F7F5F2]">
+                {user?.lastName || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-[#e8e6e1] dark:border-[#30312f]">
+              <span className="text-[#827D75] dark:text-[#ded9d6] uppercase tracking-wider font-semibold">
+                {t('Email Address', 'Alamat Email')}
+              </span>
+              <span className="font-medium text-sm text-[#1c1b19] dark:text-[#F7F5F2]">
+                {user?.email || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-[#e8e6e1] dark:border-[#30312f]">
+              <span className="text-[#827D75] dark:text-[#ded9d6] uppercase tracking-wider font-semibold">
+                {t('Phone Number', 'Nomor Telepon')}
+              </span>
+              <span className="font-medium text-sm text-[#1c1b19] dark:text-[#F7F5F2]">
+                {user?.phone || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[#827D75] dark:text-[#ded9d6] uppercase tracking-wider font-semibold">
+                {t('Account Status', 'Status Akun')}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-medium text-xs text-emerald-600 dark:text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                {t('Active', 'Aktif')}
+              </span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }

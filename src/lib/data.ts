@@ -578,6 +578,9 @@ export async function createBooking(data: {
   guestPhone?: string;
   specialRequests?: string;
   userId?: string | null;
+  bookingReference?: string;
+  status?: BookingStatus;
+  paymentStatus?: 'paid' | 'pending' | 'refunded';
 }): Promise<Booking> {
   const bookings = getBookings();
   const room = getRoomById(data.roomId);
@@ -593,7 +596,7 @@ export async function createBooking(data: {
   const totalAmount = subtotal + taxAmount;
 
   const refNum = Math.floor(10000 + Math.random() * 90000);
-  const bookingReference = `BK-${refNum}`;
+  const bookingReference = data.bookingReference || `BK-${refNum}`;
 
   const booking: Booking = {
     id: Math.max(0, ...bookings.map((b) => b.id)) + 1,
@@ -612,8 +615,8 @@ export async function createBooking(data: {
     subtotal,
     taxAmount,
     totalAmount,
-    status: 'confirmed',
-    paymentStatus: 'paid',
+    status: data.status || 'confirmed',
+    paymentStatus: data.paymentStatus || 'paid',
     createdAt: new Date().toISOString(),
   };
 

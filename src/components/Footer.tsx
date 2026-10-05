@@ -7,9 +7,9 @@ export default function Footer() {
   return (
     <footer className="bg-[#161d08] dark:bg-[#11110f] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="flex flex-col sm:grid sm:grid-cols-2 md:flex md:flex-row md:justify-between items-start gap-10 md:gap-6 lg:gap-0">
           {/* Brand */}
-          <div className="md:col-span-1">
+          <div className="max-w-xs">
             <div className="flex items-center mb-4">
               <img
                 src={`${import.meta.env.BASE_URL}images/logo/waminna_logo_lockup_horizontal_white.png`}
@@ -74,15 +74,10 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/10 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="border-t border-white/10 mt-10 pt-6">
           <p className="text-xs text-white/40 text-center sm:text-left">
             &copy; 2026 Waminna Hotel. {t('All rights reserved.', 'Hak cipta dilindungi undang-undang.')}
           </p>
-          <div className="flex gap-4 text-xs text-white/40">
-            <Link to="/terms" className="hover:text-white">{t('Terms', 'Syarat')}</Link>
-            <Link to="/privacy" className="hover:text-white">{t('Privacy', 'Privasi')}</Link>
-            <Link to="/faq" className="hover:text-white">FAQ</Link>
-          </div>
         </div>
       </div>
     </footer>

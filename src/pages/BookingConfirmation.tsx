@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle, CalendarDays, Mail, ArrowRight, Home, Loader2 } from 'lucide-react';
+import { CheckCircle, CalendarDays, Mail, ArrowRight, Home, Loader2, Clock } from 'lucide-react';
 import { fetchBookingByRef, initializeData, getRoomById } from '@/lib/data';
 import type { Booking } from '@/lib/data';
 import { fetchGuestBookingFromSupabase } from '@/lib/supabase';
@@ -104,16 +104,28 @@ export default function BookingConfirmation() {
       <Header />
 
       <main className="flex-1 max-w-xl mx-auto w-full px-4 pt-28 pb-16">
-        {/* Success Header */}
+        {/* Status Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${
+            booking.paymentStatus === 'paid'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+          }`}>
+            {booking.paymentStatus === 'paid' ? (
+              <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+            )}
           </div>
           <h1 className="text-3xl font-display font-medium text-[#1c1b19] dark:text-[#F7F5F2] mb-1">
-            {t('Booking Confirmed!', 'Reservasi Dikonfirmasi!')}
+            {booking.paymentStatus === 'paid'
+              ? t('Booking Confirmed!', 'Reservasi Dikonfirmasi!')
+              : t('Booking Awaiting Payment', 'Reservasi Menunggu Pembayaran')}
           </h1>
           <p className="text-sm text-[#827D75] dark:text-[#ded9d6] font-sans">
-            {t('Thank you for choosing Waminna Hotel Batam', 'Terima kasih telah memilih Waminna Hotel Batam')}
+            {booking.paymentStatus === 'paid'
+              ? t('Thank you for choosing Waminna Hotel Batam', 'Terima kasih telah memilih Waminna Hotel Batam')
+              : t('Please complete your transfer or QRIS payment to finalize your room reservation.', 'Harap selesaikan pembayaran transfer atau QRIS Anda untuk menyelesaikan reservasi kamar.')}
           </p>
         </div>
 
@@ -168,11 +180,17 @@ export default function BookingConfirmation() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mb-0.5">{t('Duration', 'Durasi')}</p>
-              <p className="font-medium text-[#1c1b19] dark:text-[#F7F5F2]">{booking.nights} {t('night(s)', 'malam')}</p>
+              <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mb-0.5">{t('Payment Status', 'Status Pembayaran')}</p>
+              <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
+                booking.paymentStatus === 'paid'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
+              }`}>
+                {booking.paymentStatus === 'paid' ? t('Paid (Confirmed)', 'Lunas (Dikonfirmasi)') : t('Awaiting Payment', 'Menunggu Pembayaran')}
+              </span>
             </div>
             <div>
-              <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mb-0.5">{t('Total Paid', 'Total Dibayar')}</p>
+              <p className="text-xs text-[#827D75] dark:text-[#ded9d6] mb-0.5">{booking.paymentStatus === 'paid' ? t('Total Paid', 'Total Dibayar') : t('Total Amount', 'Total Tagihan')}</p>
               <p className="font-semibold text-base text-[#C5A059]">{formatCurrency(booking.totalAmount)}</p>
             </div>
           </div>
