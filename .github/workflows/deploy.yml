@@ -20,9 +20,9 @@ jobs:
       - name: Build site
         run: npm run build
 
-      - name: Publish to Cloudflare
+      - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: pages deploy dist --project-name=waminna-hotel
