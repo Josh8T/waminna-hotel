@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Check, Users, BedDouble, Maximize, Eye, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getRoomById, getAvailableRooms, getPhotoUrl } from '@/lib/data';
 import type { Room } from '@/lib/data';
 import { getTodayString, getTomorrowString, validateStayDates } from '@/lib/dateUtils';
+import { getPosPlanning } from '@/lib/pos';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -61,18 +62,35 @@ export default function RoomDetail() {
     setCheckOut(newCheckOut);
   };
 
+  const [posPlan, setPosPlan] = useState<{ availableQuantity: number; isClosed: boolean; avgRatePerNight?: number } | null>(null);
+
+  useEffect(() => {
+    if (checkIn && checkOut && dateValidation.isValid && room) {
+      const posCode = room.posRoomCode || (room.type === 'standard' ? 'SGL' : room.type === 'deluxe' ? 'DLX' : 'STE');
+      getPosPlanning(checkIn, checkOut).then((res) => {
+        const match = res?.rooms?.find((r) => r.roomCode === posCode);
+        setPosPlan(match || null);
+      });
+    } else {
+      setPosPlan(null);
+    }
+  }, [checkIn, checkOut, dateValidation.isValid, room]);
+
+  const effectivePrice = posPlan?.avgRatePerNight || (room ? room.pricePerNight : 0);
+
   const priceSummary = useMemo(() => {
     if (!room || nights === 0) return null;
-    const subtotal = room.pricePerNight * nights;
+    const subtotal = effectivePrice * nights;
     const tax = subtotal * 0.1;
-    return { subtotal, tax, total: subtotal + tax };
-  }, [room, nights]);
+    return { subtotal, tax, total: subtotal + tax, effectivePrice };
+  }, [room, nights, effectivePrice]);
 
   const isAvailable = useMemo(() => {
     if (!checkIn || !checkOut || !room || !dateValidation.isValid) return false;
+    if (posPlan && (posPlan.isClosed || posPlan.availableQuantity <= 0)) return false;
     const available = getAvailableRooms(checkIn, checkOut, parseInt(guests));
     return available.some((r) => r.id === room.id);
-  }, [checkIn, checkOut, guests, room, dateValidation.isValid]);
+  }, [checkIn, checkOut, guests, room, dateValidation.isValid, posPlan]);
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -283,7 +301,12 @@ export default function RoomDetail() {
               <div className="border-t border-[#e8e6e1] dark:border-[#30312f] pt-3 mb-4 space-y-1.5 font-sans">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#46483f] dark:text-[#ded9d6]">
-                    {formatCurrency(room.pricePerNight)} × {nights} {t('nights', 'malam')}
+                    {formatCurrency(effectivePrice)} × {nights} {t('nights', 'malam')}
+                    {posPlan?.avgRatePerNight && (
+                      <span className="ml-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ {t('POS Live Rate', 'Tarif POS')}
+                      </span>
+                    )}
                   </span>
                   <span className="text-[#1c1b19] dark:text-[#F7F5F2]">{formatCurrency(priceSummary.subtotal)}</span>
                 </div>
@@ -313,6 +336,8 @@ export default function RoomDetail() {
                 ? t('Minimum 1 Night Required', 'Minimal 1 Malam Diperlukan')
                 : isAvailable
                 ? t('Book Now', 'Pesan Sekarang')
+                : posPlan && (posPlan.isClosed || posPlan.availableQuantity <= 0)
+                ? t('Sold Out for Selected Dates', 'Habis untuk Tanggal Ini')
                 : t('Not Available', 'Tidak Tersedia')}
             </Link>
 

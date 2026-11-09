@@ -4,6 +4,7 @@ import { Calendar, Users, Lock, ChevronLeft, Shield, AlertTriangle, ShieldCheck 
 import { getRoomById, createBooking, HOTEL_ADDONS, getPhotoUrl } from '@/lib/data';
 import { validateStayDates } from '@/lib/dateUtils';
 import { createMidtransSnapToken, verifyMidtransPayment } from '@/lib/midtrans';
+import { getPosPlanning, deductPosInventory } from '@/lib/pos';
 import Header from '@/components/Header';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -122,6 +123,25 @@ export default function BookingFlow() {
     setErrors({});
 
     try {
+      // 0. Re-verify live POS room availability before taking payment
+      const posCode = room.posRoomCode || (room.type === 'standard' ? 'SGL' : room.type === 'deluxe' ? 'DLX' : 'STE');
+      try {
+        const plan = await getPosPlanning(checkIn, checkOut);
+        const match = plan?.rooms?.find((r) => r.roomCode === posCode);
+        if (match && (match.isClosed || match.availableQuantity <= 0)) {
+          setIsSubmitting(false);
+          setErrors({
+            submit: t(
+              'Sorry, this room is no longer available in the POS inventory for the selected dates.',
+              'Maaf, kamar ini sudah tidak tersedia di sistem POS untuk tanggal yang dipilih.'
+            ),
+          });
+          return;
+        }
+      } catch (posErr) {
+        console.warn('POS live availability verification warning:', posErr);
+      }
+
       const tempRefNum = Math.floor(10000 + Math.random() * 90000);
       const bookingRef = `BK-${tempRefNum}`;
       const orderId = `${bookingRef}-${Date.now().toString().slice(-4)}`;
@@ -150,6 +170,15 @@ export default function BookingFlow() {
         bookingStatus: 'confirmed' | 'pending' = 'confirmed',
         paymentStatus: 'paid' | 'pending' = 'paid'
       ) => {
+        // Deduct allotment in POS upon confirmed booking
+        if (bookingStatus === 'confirmed') {
+          try {
+            await deductPosInventory(posCode, checkIn, checkOut, 1);
+          } catch (posUpdateErr) {
+            console.warn('Notice updating POS inventory:', posUpdateErr);
+          }
+        }
+
         const booking = await createBooking({
           bookingReference: orderId,
           status: bookingStatus,

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, RefreshCw, Radio } from 'lucide-react';
 import { getRooms, updateRoom, createRoom, deleteRoom, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType, RoomStatus } from '@/lib/data';
 import { formatCurrency } from '@/lib/utils';
+import { testPosConnection, type PosConnectionStatus } from '@/lib/pos';
 import AdminLayout from '@/components/AdminLayout';
 import ImageUploader from '@/components/ImageUploader';
 
@@ -25,6 +26,8 @@ const emptyRoom: Partial<Room> = {
   status: 'available',
   size: '25 m²',
   view: 'City View',
+  posRoomCode: 'SGL',
+  posRateCode: 'RACKPRI',
 };
 
 export default function AdminRooms() {
@@ -32,6 +35,8 @@ export default function AdminRooms() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Room | null>(null);
   const [form, setForm] = useState<Partial<Room>>(emptyRoom);
+  const [posStatus, setPosStatus] = useState<PosConnectionStatus | null>(null);
+  const [isTestingPos, setIsTestingPos] = useState(false);
 
   useEffect(() => {
     initializeData();
@@ -41,7 +46,18 @@ export default function AdminRooms() {
         setRooms([...latestRooms]);
       }
     });
+    testPos();
   }, []);
+
+  const testPos = async () => {
+    setIsTestingPos(true);
+    try {
+      const res = await testPosConnection();
+      setPosStatus(res);
+    } finally {
+      setIsTestingPos(false);
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -104,6 +120,40 @@ export default function AdminRooms() {
         </button>
       </div>
 
+      {/* POS Integration Status Banner */}
+      <div className="mb-6 p-4 rounded-lg border border-warm-border bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[#1a1917]">
+                POS XML API Integration
+              </span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                posStatus?.mode === 'live'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {posStatus?.mode === 'live' ? 'Live POS Server' : 'Sandbox Simulator Active'}
+              </span>
+            </div>
+            <p className="text-xs text-[#8a8984]">
+              Connected to Hotel POS ({posStatus?.hotelCode || 'HOTEL01'}). Room inventory and live rates sync directly with POS Room Codes.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={testPos}
+          disabled={isTestingPos}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-warm-border rounded-md text-xs font-medium text-[#5c5a54] hover:bg-warm-secondary transition-colors"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isTestingPos ? 'animate-spin' : ''}`} />
+          Test POS Sync
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rooms.map((room) => (
           <div key={room.id} className="bg-white rounded-lg border border-warm-border overflow-hidden shadow-sm flex flex-col justify-between">
@@ -137,9 +187,12 @@ export default function AdminRooms() {
                   </button>
                 </div>
               </div>
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2 mb-2 flex-wrap">
                 <span className="px-2 py-0.5 bg-brand-light text-brand text-[11px] font-medium rounded-full capitalize">
                   {room.type}
+                </span>
+                <span className="px-2 py-0.5 bg-neutral-100 text-neutral-700 text-[11px] font-mono font-medium rounded-full">
+                  POS: {room.posRoomCode || (room.type === 'standard' ? 'SGL' : room.type === 'deluxe' ? 'DLX' : 'STE')}
                 </span>
                 <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full capitalize border ${
                   room.status === 'available'
@@ -251,6 +304,34 @@ export default function AdminRooms() {
                       <option value="maintenance">Maintenance</option>
                       <option value="occupied">Occupied</option>
                     </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 p-3 bg-neutral-50 rounded-md border border-neutral-200">
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                      POS Room Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. SGL, DLX, STE"
+                      value={form.posRoomCode || ''}
+                      onChange={(e) => updateField('posRoomCode', e.target.value.toUpperCase())}
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    />
+                    <span className="text-[10px] text-[#8a8984]">Maps to roomCode in POS XML</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium tracking-wider uppercase text-[#8a8984] mb-1">
+                      POS Rate Code
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. RACKPRI"
+                      value={form.posRateCode || 'RACKPRI'}
+                      onChange={(e) => updateField('posRateCode', e.target.value.toUpperCase())}
+                      className="w-full px-3 py-2 border border-warm-border rounded-md text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                    />
+                    <span className="text-[10px] text-[#8a8984]">Rate plan code in POS XML</span>
                   </div>
                 </div>
                 <ImageUploader

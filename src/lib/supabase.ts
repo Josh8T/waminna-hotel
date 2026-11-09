@@ -211,6 +211,8 @@ export interface SupabaseRoomRow {
   status: string;
   size?: string;
   view?: string;
+  pos_room_code?: string;
+  pos_rate_code?: string;
 }
 
 export function roomToSupabaseRow(room: any): SupabaseRoomRow {
@@ -228,6 +230,8 @@ export function roomToSupabaseRow(room: any): SupabaseRoomRow {
     status: room.status || 'available',
     size: room.size || '',
     view: room.view || '',
+    pos_room_code: room.posRoomCode || null,
+    pos_rate_code: room.posRateCode || 'RACKPRI',
   };
 }
 
@@ -246,6 +250,8 @@ export function supabaseRowToRoom(row: any) {
     status: row.status,
     size: row.size || '',
     view: row.view || '',
+    posRoomCode: row.pos_room_code || undefined,
+    posRateCode: row.pos_rate_code || 'RACKPRI',
   };
 }
 

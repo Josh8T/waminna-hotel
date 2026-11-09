@@ -20,6 +20,8 @@ export interface Room {
   status: RoomStatus;
   size?: string;
   view?: string;
+  posRoomCode?: string;
+  posRateCode?: string;
 }
 
 export interface Addon {
@@ -173,6 +175,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '24 m²',
     view: 'City',
+    posRoomCode: 'SGL',
+    posRateCode: 'RACKPRI',
   },
   {
     id: 2,
@@ -188,6 +192,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '26 m²',
     view: 'City',
+    posRoomCode: 'SGL',
+    posRateCode: 'RACKPRI',
   },
   {
     id: 3,
@@ -203,6 +209,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '32 m²',
     view: 'City',
+    posRoomCode: 'DLX',
+    posRateCode: 'RACKPRI',
   },
   {
     id: 4,
@@ -218,6 +226,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '35 m²',
     view: 'City',
+    posRoomCode: 'DLX',
+    posRateCode: 'RACKPRI',
   },
   {
     id: 5,
@@ -233,6 +243,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '52 m²',
     view: 'Skyline',
+    posRoomCode: 'STE',
+    posRateCode: 'RACKPRI',
   },
   {
     id: 6,
@@ -248,6 +260,8 @@ const DEFAULT_ROOMS: Room[] = [
     status: 'available',
     size: '68 m²',
     view: 'Panoramic',
+    posRoomCode: 'STE',
+    posRateCode: 'RACKPRI',
   },
 ];
 

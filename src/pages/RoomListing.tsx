@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { getRooms, getAvailableRooms, initializeData, getPhotoUrl, syncRoomsWithSupabase } from '@/lib/data';
 import type { Room, RoomType, BedType } from '@/lib/data';
 import { getTodayString, getTomorrowString, validateStayDates, formatDateRange } from '@/lib/dateUtils';
+import { getPosPlanning } from '@/lib/pos';
+import type { PosRoomPlanning } from '@/lib/pos';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useThemeLanguage } from '@/context/ThemeLanguageContext';
@@ -27,6 +29,7 @@ export default function RoomListing() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [, setRefreshKey] = useState(0);
+  const [posPlans, setPosPlans] = useState<Record<string, PosRoomPlanning>>({});
 
   const today = getTodayString();
   const minCheckOut = checkIn ? getTomorrowString(checkIn) : getTomorrowString();
@@ -44,6 +47,23 @@ export default function RoomListing() {
       setRefreshKey((k) => k + 1);
     });
   }, []);
+
+  // Fetch POS planning when valid dates are selected
+  useEffect(() => {
+    if (checkIn && checkOut && dateValidation?.isValid) {
+      getPosPlanning(checkIn, checkOut).then((res) => {
+        if (res?.rooms) {
+          const map: Record<string, PosRoomPlanning> = {};
+          res.rooms.forEach((r) => {
+            map[r.roomCode] = r;
+          });
+          setPosPlans(map);
+        }
+      });
+    } else {
+      setPosPlans({});
+    }
+  }, [checkIn, checkOut, dateValidation?.isValid]);
 
   // Validate and sanitize URL date parameters if present
   useEffect(() => {
@@ -382,27 +402,50 @@ export default function RoomListing() {
                 const queryString = params.toString();
                 const roomUrl = `/rooms/${room.id}${queryString ? `?${queryString}` : ''}`;
 
+                const posCode = room.posRoomCode || (room.type === 'standard' ? 'SGL' : room.type === 'deluxe' ? 'DLX' : 'STE');
+                const roomPlan = posPlans[posCode];
+                const isSoldOut = Boolean(roomPlan && (roomPlan.isClosed || roomPlan.availableQuantity <= 0));
+                const displayPrice = roomPlan?.avgRatePerNight || room.pricePerNight;
+
                 return (
                   <Link
                     key={room.id}
-                    to={roomUrl}
-                    className="group flex flex-col sm:flex-row bg-white dark:bg-[#242320] border border-[#e8e6e1] dark:border-[#30312f] hover:border-[#C5A059]/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]"
+                    to={isSoldOut ? '#' : roomUrl}
+                    className={`group flex flex-col sm:flex-row bg-white dark:bg-[#242320] border rounded-xl overflow-hidden shadow-sm transition-all ${
+                      isSoldOut
+                        ? 'border-neutral-200 dark:border-neutral-800 opacity-75 cursor-not-allowed'
+                        : 'border-[#e8e6e1] dark:border-[#30312f] hover:border-[#C5A059]/60 hover:shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]'
+                    }`}
                   >
-                    <div className="sm:w-44 sm:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-36 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    <div className="sm:w-44 sm:min-w-[176px] aspect-[4/3] sm:aspect-auto sm:h-36 overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
                       <img
                         src={getPhotoUrl(room.photos?.[0])}
                         alt={room.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className={`w-full h-full object-cover transition-transform duration-500 ${isSoldOut ? 'grayscale' : 'group-hover:scale-105'}`}
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = getPhotoUrl('images/rooms/standard/standard.png');
                         }}
                       />
+                      {isSoldOut && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-2">
+                          <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow">
+                            {t('Sold Out', 'Habis')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 p-4 flex flex-col justify-between">
                       <div>
-                        <h3 className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2] group-hover:text-[#C5A059] transition-colors mb-1 font-display">
-                          {room.name}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="text-base font-semibold text-[#1c1b19] dark:text-[#F7F5F2] group-hover:text-[#C5A059] transition-colors font-display">
+                            {room.name}
+                          </h3>
+                          {roomPlan && !isSoldOut && (
+                            <span className="text-[10px] font-sans px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full font-medium shrink-0">
+                              {roomPlan.availableQuantity} {t('left in POS', 'tersedia')}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           <span className="px-2 py-0.5 bg-[#e8ece1] dark:bg-[#30312f] text-[#414930] dark:text-[#C5A059] text-[11px] font-sans font-semibold rounded-full capitalize">
                             {room.type}
@@ -414,10 +457,17 @@ export default function RoomListing() {
                         <p className="text-sm text-[#827D75] dark:text-[#ded9d6] line-clamp-2">{room.description}</p>
                       </div>
                       <div className="flex items-center justify-between mt-3 border-t border-[#e8e6e1]/50 dark:border-[#30312f] pt-2">
-                        <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
-                          {formatCurrency(room.pricePerNight)}
-                          <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
-                        </span>
+                        <div>
+                          <span className="text-base font-sans font-bold text-[#414930] dark:text-[#C5A059]">
+                            {formatCurrency(displayPrice)}
+                            <span className="text-xs font-sans font-normal text-[#827D75] dark:text-white/60"> / {t('night', 'malam')}</span>
+                          </span>
+                          {roomPlan?.avgRatePerNight && (
+                            <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-sans">
+                              ✓ {t('POS Live Rate', 'Tarif Langsung POS')}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Link>
